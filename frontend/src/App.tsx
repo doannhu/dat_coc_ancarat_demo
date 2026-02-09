@@ -1,0 +1,96 @@
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { AuthProvider, useAuth } from './context/AuthContext';
+import { Login } from './pages/Login';
+import { Dashboard } from './pages/Dashboard';
+import { NewOrder } from './pages/NewOrder';
+import { ManufacturerOrder } from './pages/ManufacturerOrder';
+import { ManufacturerOrderList } from './pages/ManufacturerOrderList';
+import { Buyback } from './pages/Buyback';
+import { Fulfillment } from './pages/Fulfillment';
+import { Orders } from './pages/Orders';
+import { StoreList } from './pages/StoreList';
+import { type ReactNode } from 'react';
+
+function PrivateRoute({ children }: { children: ReactNode }) {
+  const { user } = useAuth();
+  return user ? <>{children}</> : <Navigate to="/login" replace />;
+}
+
+function App() {
+  return (
+    <AuthProvider>
+      <Router>
+        <Routes>
+          <Route path="/login" element={<Login />} />
+          <Route
+            path="/dashboard"
+            element={
+              <PrivateRoute>
+                <Dashboard />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/orders"
+            element={
+              <PrivateRoute>
+                <Orders />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/orders/new"
+            element={
+              <PrivateRoute>
+                <NewOrder />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/manufacturer-order"
+            element={
+              <PrivateRoute>
+                <ManufacturerOrder />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/manufacturer-orders"
+            element={
+              <PrivateRoute>
+                <ManufacturerOrderList />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/buyback"
+            element={
+              <PrivateRoute>
+                <Buyback />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/fulfillment"
+            element={
+              <PrivateRoute>
+                <Fulfillment />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/stores"
+            element={
+              <PrivateRoute>
+                <StoreList />
+              </PrivateRoute>
+            }
+          />
+          <Route path="/" element={<Navigate to="/dashboard" replace />} />
+        </Routes>
+      </Router>
+    </AuthProvider>
+  );
+}
+
+export default App;

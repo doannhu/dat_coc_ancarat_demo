@@ -3,6 +3,11 @@ from typing import Optional, List
 from datetime import datetime
 from app.db.models import TransactionType
 
+from app.modules.customers.schemas import Customer
+from app.modules.stores.schemas import Store
+from app.modules.staff.schemas import Staff
+from app.modules.products.schemas import Product
+
 class TransactionItemBase(BaseModel):
     product_id: int
     price_at_time: float
@@ -13,6 +18,7 @@ class TransactionItemCreate(TransactionItemBase):
 class TransactionItem(TransactionItemBase):
     id: int
     transaction_id: int
+    product: Optional[Product] = None
     model_config = ConfigDict(from_attributes=True)
 
 class TransactionBase(BaseModel):
@@ -34,12 +40,28 @@ class OrderCreateItem(BaseModel):
     quantity: int
     price: float
     is_new: bool = True
+    product_id: Optional[int] = None  # For selecting specific available product
 
 class OrderCreate(BaseModel):
     staff_id: int
     customer_id: int
     store_id: int
     items: List[OrderCreateItem]
+    created_at: Optional[datetime] = None
+    payment_method: Optional[str] = "cash"
+
+class ManufacturerOrderItem(BaseModel):
+    product_id: Optional[int] = None # For existing
+    product_type: Optional[str] = None # For new
+    quantity: int = 1
+    manufacturer_price: float
+
+class ManufacturerOrderCreate(BaseModel):
+    code: str
+    created_at: Optional[datetime] = None
+    staff_id: int
+    store_id: int
+    items: List[ManufacturerOrderItem]
 
 class TransactionInDBBase(TransactionBase):
     id: int
@@ -48,6 +70,46 @@ class TransactionInDBBase(TransactionBase):
 
 class Transaction(TransactionInDBBase):
     items: List[TransactionItem] = []
+    customer: Optional[Customer] = None
+    store: Optional[Store] = None
+    staff: Optional[Staff] = None
+    order_status: Optional[str] = None  # Derived field: 'buyback', 'fulfilled', or None
+    code: Optional[str] = None  # Manufacturer order code
+    payment_method: Optional[str] = None
 
-class TransactionList(BaseModel):
-    transactions: List[Transaction]
+from typing import Dict
+
+class StoreStats(BaseModel):
+    store_name: str
+    total_orders: int
+    revenue: float
+
+class TransactionStats(BaseModel):
+    total_orders: int
+    total_revenue: float
+    payment_method_stats: Dict[str, float]
+    store_stats: List[StoreStats]
+
+# Buyback schemas
+class BuybackItem(BaseModel):
+    product_id: int
+    buyback_price: float
+
+class BuybackCreate(BaseModel):
+    original_transaction_id: int  # The sale transaction being bought back
+    staff_id: int
+    store_id: int
+    items: List[BuybackItem]
+    created_at: Optional[datetime] = None
+    payment_method: Optional[str] = "cash"
+
+# Fulfillment schemas
+class FulfillmentItem(BaseModel):
+    product_id: int
+
+class FulfillmentCreate(BaseModel):
+    original_transaction_id: int  # The sale transaction being fulfilled
+    staff_id: int
+    store_id: int
+    items: List[FulfillmentItem]  # Products being delivered to customer
+    created_at: Optional[datetime] = None

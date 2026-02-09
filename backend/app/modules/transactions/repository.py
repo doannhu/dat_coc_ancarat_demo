@@ -1,7 +1,9 @@
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from datetime import date, datetime
+from typing import Optional
+from sqlalchemy import select, extract, cast, Date, func
 from sqlalchemy.orm import selectinload
-from app.db.models import Transaction, TransactionItem
+from sqlalchemy.ext.asyncio import AsyncSession
+from app.db.models import Transaction, TransactionItem, Product, Customer, Store, Staff, TransactionType
 from . import schemas as transaction_schema
 
 class TransactionRepository:
@@ -9,13 +11,39 @@ class TransactionRepository:
         self.db = db
 
     async def get(self, id: int):
-        # Eager load items
-        result = await self.db.execute(select(Transaction).options(selectinload(Transaction.items)).where(Transaction.id == id))
+        # Eager load items and relationships
+        query = select(Transaction).options(
+            selectinload(Transaction.items).selectinload(TransactionItem.product),
+            selectinload(Transaction.customer),
+            selectinload(Transaction.store),
+            selectinload(Transaction.staff)
+        ).where(Transaction.id == id)
+        result = await self.db.execute(query)
         return result.scalar_one_or_none()
 
-    async def get_multi(self, skip: int = 0, limit: int = 100):
-        # Eager load items
-        result = await self.db.execute(select(Transaction).options(selectinload(Transaction.items)).offset(skip).limit(limit))
+    async def get_multi(self, skip: int = 0, limit: int = 100, start_date: Optional[date] = None, end_date: Optional[date] = None, tx_type: Optional[str] = None):
+        # Eager load items and relationships
+        query = select(Transaction).options(
+            selectinload(Transaction.items).selectinload(TransactionItem.product),
+            selectinload(Transaction.customer),
+            selectinload(Transaction.store),
+            selectinload(Transaction.staff)
+        )
+        
+        if tx_type:
+            query = query.where(Transaction.type == tx_type)
+        
+        if start_date:
+            # Cast to Date for accurate comparison ignoring time
+            query = query.where(func.date(Transaction.created_at) >= start_date)
+            
+        if end_date:
+            query = query.where(func.date(Transaction.created_at) <= end_date)
+            
+        # Order by newest first
+        query = query.order_by(Transaction.created_at.desc())
+
+        result = await self.db.execute(query.offset(skip).limit(limit))
         return result.scalars().all()
 
     async def create(self, obj_in: transaction_schema.TransactionCreate):
@@ -34,3 +62,115 @@ class TransactionRepository:
 
     async def refresh(self, obj):
         await self.db.refresh(obj)
+
+    async def get_by_customer(self, customer_id: int, tx_type: str = None):
+        """Get transactions by customer ID, optionally filtered by type"""
+        query = select(Transaction).options(
+            selectinload(Transaction.items).selectinload(TransactionItem.product),
+            selectinload(Transaction.customer),
+            selectinload(Transaction.store),
+            selectinload(Transaction.staff)
+        ).where(Transaction.customer_id == customer_id)
+        
+        if tx_type:
+            query = query.where(Transaction.type == tx_type)
+        
+        query = query.order_by(Transaction.created_at.desc())
+        result = await self.db.execute(query)
+        return result.scalars().all()
+
+    async def get_linked_statuses(self, transaction_ids: list):
+        """Get linked transaction types (buyback/fulfillment) for given transaction IDs.
+        Returns a dict: {original_tx_id: status_type}
+        """
+        if not transaction_ids:
+            return {}
+        
+        # Find transactions that link to any of the given IDs
+        query = select(
+            Transaction.linked_transaction_id,
+            Transaction.type
+        ).where(
+            Transaction.linked_transaction_id.in_(transaction_ids),
+            Transaction.type.in_([TransactionType.BUYBACK, TransactionType.FULFILLMENT])
+        )
+        
+        result = await self.db.execute(query)
+        rows = result.all()
+        
+        # Build status map - prioritize buyback over fulfillment if both exist
+        status_map = {}
+        for linked_id, tx_type in rows:
+            if linked_id not in status_map:
+                status_map[linked_id] = tx_type
+            elif tx_type == TransactionType.BUYBACK:
+                # Buyback takes priority
+                status_map[linked_id] = tx_type
+        
+        return status_map
+
+
+    async def get_stats(self, start_date: Optional[date] = None, end_date: Optional[date] = None):
+        # Base query for Sales
+        base_query = select(Transaction).where(Transaction.type == TransactionType.SALE)
+        
+        if start_date:
+            base_query = base_query.where(cast(Transaction.created_at, Date) >= start_date)
+        if end_date:
+            base_query = base_query.where(cast(Transaction.created_at, Date) <= end_date)
+
+        # 1. Total Orders
+        total_orders_query = select(func.count()).select_from(base_query.subquery())
+        total_orders = (await self.db.execute(total_orders_query)).scalar_one()
+
+        # 2. Total Revenue (sum of items price)
+        # Assuming we need to join TransactionItem
+        revenue_query = select(func.sum(TransactionItem.price_at_time))\
+            .join(Transaction, TransactionItem.transaction_id == Transaction.id)\
+            .where(Transaction.type == TransactionType.SALE)
+            
+        if start_date:
+            revenue_query = revenue_query.where(cast(Transaction.created_at, Date) >= start_date)
+        if end_date:
+            revenue_query = revenue_query.where(cast(Transaction.created_at, Date) <= end_date)
+
+        total_revenue = (await self.db.execute(revenue_query)).scalar() or 0.0
+
+        # 3. By Payment Method
+        pm_query = select(Transaction.payment_method, func.sum(TransactionItem.price_at_time))\
+            .join(TransactionItem, TransactionItem.transaction_id == Transaction.id)\
+            .where(Transaction.type == TransactionType.SALE)\
+            .group_by(Transaction.payment_method)
+
+        if start_date:
+            pm_query = pm_query.where(cast(Transaction.created_at, Date) >= start_date)
+        if end_date:
+            pm_query = pm_query.where(cast(Transaction.created_at, Date) <= end_date)
+            
+        pm_results = (await self.db.execute(pm_query)).all()
+        payment_method_stats = {row[0] or "unknown": row[1] or 0.0 for row in pm_results}
+
+        # 4. By Store
+        store_query = select(Store.name, func.count(Transaction.id.distinct()), func.sum(TransactionItem.price_at_time))\
+            .join(Transaction, Transaction.store_id == Store.id)\
+            .join(TransactionItem, TransactionItem.transaction_id == Transaction.id)\
+            .where(Transaction.type == TransactionType.SALE)\
+            .group_by(Store.name)
+
+        if start_date:
+            store_query = store_query.where(cast(Transaction.created_at, Date) >= start_date)
+        if end_date:
+            store_query = store_query.where(cast(Transaction.created_at, Date) <= end_date)
+
+        store_results = (await self.db.execute(store_query)).all()
+        store_stats = [
+            {"store_name": row[0], "total_orders": row[1], "revenue": row[2] or 0.0}
+            for row in store_results
+        ]
+
+        return {
+            "total_orders": total_orders,
+            "total_revenue": total_revenue,
+            "payment_method_stats": payment_method_stats,
+            "store_stats": store_stats
+        }

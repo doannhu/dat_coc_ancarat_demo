@@ -1,4 +1,5 @@
-from typing import List
+from datetime import date
+from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.session import get_db
@@ -15,13 +16,23 @@ def get_service(db: AsyncSession = Depends(get_db)) -> TransactionService:
     product_repository = ProductRepository(db)
     return TransactionService(repository, product_repository)
 
+@router.get("/stats", response_model=transaction_schema.TransactionStats)
+async def get_transaction_stats(
+    start_date: Optional[date] = None,
+    end_date: Optional[date] = None,
+    service: TransactionService = Depends(get_service)
+):
+    return await service.get_stats(start_date=start_date, end_date=end_date)
 @router.get("/", response_model=List[transaction_schema.Transaction])
 async def read_transactions(
     skip: int = 0, 
     limit: int = 100, 
+    start_date: Optional[date] = None,
+    end_date: Optional[date] = None,
+    tx_type: Optional[str] = None,
     service: TransactionService = Depends(get_service)
 ):
-    return await service.get_transactions(skip=skip, limit=limit)
+    return await service.get_transactions(skip=skip, limit=limit, start_date=start_date, end_date=end_date, tx_type=tx_type)
 
 @router.get("/{id}", response_model=transaction_schema.Transaction)
 async def read_transaction(
@@ -40,5 +51,45 @@ async def create_order(
 ):
     try:
         return await service.create_order(order_in=order)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+@router.post("/manufacturer-order", response_model=transaction_schema.Transaction)
+async def create_manufacturer_order(
+    order: transaction_schema.ManufacturerOrderCreate, 
+    service: TransactionService = Depends(get_service)
+):
+    try:
+        return await service.create_manufacturer_order(order_in=order)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@router.get("/customer/{customer_id}", response_model=List[transaction_schema.Transaction])
+async def get_customer_transactions(
+    customer_id: int,
+    tx_type: Optional[str] = None,
+    service: TransactionService = Depends(get_service)
+):
+    """Get all transactions for a specific customer"""
+    return await service.get_transactions_by_customer(customer_id=customer_id, tx_type=tx_type)
+
+@router.post("/buyback", response_model=transaction_schema.Transaction)
+async def create_buyback(
+    buyback: transaction_schema.BuybackCreate,
+    service: TransactionService = Depends(get_service)
+):
+    """Create a buyback transaction - products become available again"""
+    try:
+        return await service.create_buyback(buyback_in=buyback)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@router.post("/fulfillment", response_model=transaction_schema.Transaction)
+async def create_fulfillment(
+    fulfillment: transaction_schema.FulfillmentCreate,
+    service: TransactionService = Depends(get_service)
+):
+    """Create a fulfillment transaction - products delivered to customer"""
+    try:
+        return await service.create_fulfillment(fulfillment_in=fulfillment)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))

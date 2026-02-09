@@ -13,6 +13,8 @@ class ProductStatus(str, Enum):
     AVAILABLE = "available"
     SOLD = "sold"
     IN_TRANSIT = "in_transit"
+    ORDERED = "ordered"
+    FULFILLED = "fulfilled"  # Product fulfilled/delivered to customer
 
 class TransactionType(str, Enum):
     SALE = "sale"          # Money In (Staff -> Customer)
@@ -59,8 +61,17 @@ class Product(Base):
     status = Column(String, default=ProductStatus.AVAILABLE)
     last_price = Column(Float)
     store_id = Column(Integer, ForeignKey("stores.id"))
+    is_ordered = Column(Boolean, default=False)  # True when ordered from manufacturer
+    is_delivered = Column(Boolean, default=False)  # True when delivered from manufacturer
     
     store = relationship("Store", back_populates="products")
+
+    transactions = relationship(
+        "Transaction",
+        secondary="transaction_items",
+        back_populates="product_items",
+        viewonly=True
+    )
 
 class Transaction(Base):
     __tablename__ = "transactions"
@@ -80,6 +91,16 @@ class Transaction(Base):
     customer = relationship("Customer", back_populates="transactions")
     store = relationship("Store", back_populates="transactions")
     linked_to = relationship("Transaction", remote_side=[id])
+
+    payment_method = Column(String, nullable=True)
+    code = Column(String, nullable=True)
+    
+    product_items = relationship(
+        "Product",
+        secondary="transaction_items",
+        back_populates="transactions",
+        viewonly=True
+    )
 
 class TransactionItem(Base):
     """Junction table recording the price of each item at the time of order."""
