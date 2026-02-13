@@ -23,6 +23,11 @@ class ProductUpdate(BaseModel):
     is_ordered: Optional[bool] = None
     is_delivered: Optional[bool] = None
 
+class ProductSwap(BaseModel):
+    product_id_1: int
+    product_id_2: int
+    note: Optional[str] = None
+
 from app.modules.customers.schemas import Customer
 from app.modules.stores.schemas import Store
 
@@ -46,6 +51,7 @@ class Product(ProductInDBBase):
     customer_name: Optional[str] = None
     order_date: Optional[datetime] = None
     store_name: Optional[str] = None
+    store: Optional[Store] = None
 
 
 class ProductWithTransactions(ProductInDBBase):
@@ -54,3 +60,15 @@ class ProductWithTransactions(ProductInDBBase):
 
 class ProductList(BaseModel):
     products: List[Product]
+
+class BuybackInfo(BaseModel):
+    transaction_code: Optional[str] = None
+    created_at: datetime
+    customer_name: Optional[str] = None
+
+class ProductStatusInfo(BaseModel):
+    id: int
+    status: ProductStatus
+    buyback_info: Optional[BuybackInfo] = None
+    sale_info: Optional[BuybackInfo] = None
+    swap_info: Optional[BuybackInfo] = None  # Returned to inventory via swap (Hoán đổi)

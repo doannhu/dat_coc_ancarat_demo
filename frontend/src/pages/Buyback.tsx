@@ -5,6 +5,7 @@ import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
 import { Trash, Search, ArrowLeft } from 'lucide-react';
+import { formatDate, formatTime, nowHanoiLocal, hanoiToISO } from '../lib/dateUtils';
 
 // Types
 interface Store { id: number; name: string; }
@@ -20,6 +21,7 @@ interface Transaction {
     store: Store;
     staff: Staff;
     items: TransactionItem[];
+    order_status?: string;
 }
 
 interface BuybackItem {
@@ -41,7 +43,7 @@ export function Buyback() {
     const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
 
     const [buybackItems, setBuybackItems] = useState<BuybackItem[]>([]);
-    const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().slice(0, 16));
+    const [selectedDate, setSelectedDate] = useState<string>(nowHanoiLocal());
     const [paymentMethod, setPaymentMethod] = useState<'cash' | 'bank_transfer'>('cash');
 
     // Fetch customers on mount
@@ -72,7 +74,7 @@ export function Buyback() {
     const fetchCustomerTransactions = async (customerId: number) => {
         try {
             // Get only sale transactions for this customer
-            const res = await axios.get(`/api/v1/transactions/customer/${customerId}?tx_type=sale`);
+            const res = await axios.get(`/api/v1/transactions/customer/${customerId}?tx_type=Đơn cọc`);
             setCustomerTransactions(res.data);
         } catch (e) {
             console.error("Failed to fetch customer transactions", e);
@@ -87,11 +89,15 @@ export function Buyback() {
     );
 
     const selectTransaction = (tx: Transaction) => {
+        if (tx.order_status === 'Mua lại' || tx.order_status === 'Đã giao' || tx.order_status === 'Bán lại NSX') {
+            return; // Prevent selection
+        }
+
         setSelectedTransaction(tx);
         // Pre-populate buyback items from transaction items
         // Only include items that have status 'sold'
         const items: BuybackItem[] = tx.items
-            .filter(item => item.product.status === 'sold')
+            .filter(item => item.product.status === 'Đã bán')
             .map(item => ({
                 product_id: item.product_id,
                 product_type: item.product.product_type,
@@ -136,7 +142,7 @@ export function Buyback() {
                     product_id: item.product_id,
                     buyback_price: item.buyback_price
                 })),
-                created_at: new Date(selectedDate).toISOString(),
+                created_at: hanoiToISO(selectedDate),
                 payment_method: paymentMethod
             };
 
@@ -154,6 +160,11 @@ export function Buyback() {
         return new Intl.NumberFormat('vi-VN').format(amount) + ' VND';
     };
 
+    // Helper to check if order is processable
+    const isProcessable = (tx: Transaction) => {
+        return !tx.order_status; // Processable if status is null/undefined
+    };
+
     return (
         <div className="min-h-screen bg-gray-50 p-6">
             <div className="max-w-4xl mx-auto space-y-6">
@@ -161,12 +172,12 @@ export function Buyback() {
                     <Button variant="ghost" onClick={() => navigate('/dashboard')}>
                         <ArrowLeft className="h-5 w-5" />
                     </Button>
-                    <h1 className="text-3xl font-bold text-gray-900">Buyback</h1>
+                    <h1 className="text-3xl font-bold text-gray-900">Mua lại đơn hàng</h1>
                 </div>
 
                 {/* Customer Search */}
                 <Card>
-                    <CardHeader><CardTitle>Find Customer</CardTitle></CardHeader>
+                    <CardHeader><CardTitle>Tìm khách hàng</CardTitle></CardHeader>
                     <CardContent className="space-y-4">
                         <div className="relative">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
@@ -220,53 +231,70 @@ export function Buyback() {
                 {/* Customer Orders */}
                 {selectedCustomer && (
                     <Card>
-                        <CardHeader><CardTitle>Customer Orders</CardTitle></CardHeader>
+                        <CardHeader><CardTitle>Đơn hàng</CardTitle></CardHeader>
                         <CardContent>
                             {customerTransactions.length === 0 ? (
                                 <p className="text-gray-500">No orders found for this customer</p>
                             ) : (
                                 <div className="space-y-2">
-                                    {customerTransactions.map(tx => (
-                                        <div
-                                            key={tx.id}
-                                            className={`p-3 border rounded cursor-pointer transition-colors ${selectedTransaction?.id === tx.id
-                                                    ? 'border-blue-500 bg-blue-50'
-                                                    : 'hover:bg-gray-50'
-                                                }`}
-                                            onClick={() => selectTransaction(tx)}
-                                        >
-                                            <div className="flex justify-between items-start">
-                                                <div>
-                                                    <div className="font-medium">Order #{tx.id}</div>
-                                                    <div className="text-sm text-gray-500">
-                                                        {new Date(tx.created_at).toLocaleDateString()} {new Date(tx.created_at).toLocaleTimeString()}
+                                    {customerTransactions.map(tx => {
+                                        const processable = isProcessable(tx);
+                                        return (
+                                            <div
+                                                key={tx.id}
+                                                className={`p-3 border rounded transition-colors ${!processable
+                                                    ? 'bg-gray-100 cursor-not-allowed opacity-70'
+                                                    : selectedTransaction?.id === tx.id
+                                                        ? 'border-blue-500 bg-blue-50 cursor-pointer'
+                                                        : 'hover:bg-gray-50 cursor-pointer'
+                                                    }`}
+                                                onClick={() => processable && selectTransaction(tx)}
+                                            >
+                                                <div className="flex justify-between items-start">
+                                                    <div>
+                                                        <div className="flex items-center gap-2">
+                                                            <div className="font-medium">Đơn #{tx.id}</div>
+                                                            {tx.order_status && (
+                                                                <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${tx.order_status === 'Đã giao' ? 'bg-green-100 text-green-800' :
+                                                                    tx.order_status === 'Mua lại' ? 'bg-blue-100 text-blue-800' :
+                                                                        'bg-gray-200 text-gray-800'
+                                                                    }`}>
+                                                                    {tx.order_status.toUpperCase()}
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                        <div className="text-sm text-gray-500">
+                                                            {formatDate(tx.created_at)} {formatTime(tx.created_at)}
+                                                        </div>
+                                                        <div className="text-sm text-gray-500">
+                                                            Store: {tx.store?.name || 'N/A'} | Staff: {tx.staff?.staff_name || 'N/A'}
+                                                        </div>
                                                     </div>
-                                                    <div className="text-sm text-gray-500">
-                                                        Store: {tx.store?.name || 'N/A'} | Staff: {tx.staff?.staff_name || 'N/A'}
+                                                    <div className="text-right">
+                                                        <div className="font-medium text-blue-600">
+                                                            {formatCurrency(tx.items.reduce((sum, item) => sum + item.price_at_time, 0))}
+                                                        </div>
+                                                        <div className="text-sm text-gray-500">
+                                                            {tx.items.length} item(s)
+                                                        </div>
                                                     </div>
                                                 </div>
-                                                <div className="text-right">
-                                                    <div className="font-medium text-blue-600">
-                                                        {formatCurrency(tx.items.reduce((sum, item) => sum + item.price_at_time, 0))}
-                                                    </div>
-                                                    <div className="text-sm text-gray-500">
-                                                        {tx.items.length} item(s)
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            {/* Show items preview */}
-                                            <div className="mt-2 text-sm text-gray-600">
-                                                {tx.items.map(item => (
-                                                    <span key={item.id} className={`inline-block mr-2 px-2 py-0.5 rounded text-xs ${item.product.status === 'sold'
+                                                {/* Show items preview */}
+                                                <div className="mt-2 text-sm text-gray-600">
+                                                    {tx.items.map(item => (
+                                                        <span key={item.id} className={`inline-block mr-2 px-2 py-0.5 rounded text-xs ${item.product.status === 'Đã bán'
                                                             ? 'bg-green-100 text-green-800'
-                                                            : 'bg-gray-100 text-gray-500'
-                                                        }`}>
-                                                        #{item.product_id} {item.product.product_type} ({item.product.status})
-                                                    </span>
-                                                ))}
+                                                            : item.product.status === 'Đã giao'
+                                                                ? 'bg-green-100 text-green-800'
+                                                                : 'bg-gray-100 text-gray-500'
+                                                            }`}>
+                                                            #{item.product_id} {item.product.product_type} ({item.product.status})
+                                                        </span>
+                                                    ))}
+                                                </div>
                                             </div>
-                                        </div>
-                                    ))}
+                                        );
+                                    })}
                                 </div>
                             )}
                         </CardContent>
@@ -277,12 +305,12 @@ export function Buyback() {
                 {selectedTransaction && (
                     <Card>
                         <CardHeader>
-                            <CardTitle>Buyback Items</CardTitle>
+                            <CardTitle>Mua lại đơn</CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-4">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                                 <div>
-                                    <label className="block text-sm font-medium mb-1">Date & Time</label>
+                                    <label className="block text-sm font-medium mb-1">Ngày giờ mua lại</label>
                                     <Input
                                         type="datetime-local"
                                         value={selectedDate}
@@ -290,7 +318,7 @@ export function Buyback() {
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium mb-1">Store (from order)</label>
+                                    <label className="block text-sm font-medium mb-1">Cửa hàng</label>
                                     <Input
                                         value={selectedTransaction.store?.name || 'N/A'}
                                         disabled
@@ -306,9 +334,9 @@ export function Buyback() {
                                     <table className="w-full text-sm">
                                         <thead className="bg-gray-100">
                                             <tr>
-                                                <th className="p-2 text-left">Product</th>
-                                                <th className="p-2 text-right">Original Price</th>
-                                                <th className="p-2 text-right">Buyback Price</th>
+                                                <th className="p-2 text-left">Sản phẩm</th>
+                                                <th className="p-2 text-right">Giá cọc</th>
+                                                <th className="p-2 text-right">Giá mua lại</th>
                                                 <th className="p-2"></th>
                                             </tr>
                                         </thead>
@@ -353,7 +381,7 @@ export function Buyback() {
                         <CardContent className="p-6">
                             <div className="flex justify-between items-center mb-6">
                                 <div>
-                                    <label className="block text-sm font-medium mb-2">Payment Method</label>
+                                    <label className="block text-sm font-medium mb-2">Phương thức thanh toán</label>
                                     <div className="flex gap-4">
                                         <label className="flex items-center gap-2 cursor-pointer">
                                             <input
@@ -362,7 +390,7 @@ export function Buyback() {
                                                 checked={paymentMethod === 'cash'}
                                                 onChange={() => setPaymentMethod('cash')}
                                             />
-                                            <span>Cash</span>
+                                            <span>Tiền mặt</span>
                                         </label>
                                         <label className="flex items-center gap-2 cursor-pointer">
                                             <input
@@ -371,12 +399,12 @@ export function Buyback() {
                                                 checked={paymentMethod === 'bank_transfer'}
                                                 onChange={() => setPaymentMethod('bank_transfer')}
                                             />
-                                            <span>Bank Transfer</span>
+                                            <span>Chuyển khoản</span>
                                         </label>
                                     </div>
                                 </div>
                                 <div className="text-right">
-                                    <p className="text-sm text-gray-500">Total Buyback Amount</p>
+                                    <p className="text-sm text-gray-500">Tổng giá mua lại</p>
                                     <p className="text-3xl font-bold text-green-600">{formatCurrency(totalAmount)}</p>
                                 </div>
                             </div>
@@ -386,7 +414,7 @@ export function Buyback() {
                                 onClick={handleSubmit}
                                 disabled={buybackItems.length === 0}
                             >
-                                Complete Buyback
+                                Mua lại đơn
                             </Button>
                         </CardContent>
                     </Card>

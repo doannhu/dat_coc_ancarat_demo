@@ -96,14 +96,14 @@ export function StoreList() {
                     <Button variant="ghost" onClick={() => navigate('/dashboard')}>
                         <ArrowLeft className="h-5 w-5" />
                     </Button>
-                    <h1 className="text-3xl font-bold text-gray-900">Store Inventory</h1>
+                    <h1 className="text-3xl font-bold text-gray-900">Tồn kho cửa hàng</h1>
                 </div>
 
                 {/* Stats Cards */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <Card>
                         <CardHeader className="pb-2">
-                            <CardTitle className="text-sm font-medium">Total Stores</CardTitle>
+                            <CardTitle className="text-sm font-medium">Tổng số cửa hàng</CardTitle>
                         </CardHeader>
                         <CardContent>
                             <div className="text-2xl font-bold">{stores.length}</div>
@@ -111,7 +111,7 @@ export function StoreList() {
                     </Card>
                     <Card>
                         <CardHeader className="pb-2">
-                            <CardTitle className="text-sm font-medium">Total Available Products</CardTitle>
+                            <CardTitle className="text-sm font-medium">Tổng số sản phẩm có sẵn</CardTitle>
                         </CardHeader>
                         <CardContent>
                             <div className="text-2xl font-bold text-green-600">{totalProducts}</div>
@@ -119,7 +119,7 @@ export function StoreList() {
                     </Card>
                     <Card>
                         <CardHeader className="pb-2">
-                            <CardTitle className="text-sm font-medium">Total Inventory Value</CardTitle>
+                            <CardTitle className="text-sm font-medium">Tổng giá trị tồn kho</CardTitle>
                         </CardHeader>
                         <CardContent>
                             <div className="text-2xl font-bold text-blue-600">{formatCurrency(totalValue)}</div>
@@ -137,9 +137,9 @@ export function StoreList() {
                         </CardHeader>
                         <CardContent>
                             <div className="mb-4">
-                                <p><strong>Type:</strong> {selectedProduct.product_type}</p>
-                                <p><strong>Price:</strong> {formatCurrency(selectedProduct.last_price || 0)}</p>
-                                <p><strong>Current Store:</strong> {selectedProduct.store_name}</p>
+                                <p><strong>Loại:</strong> {selectedProduct.product_type}</p>
+                                <p><strong>Giá:</strong> {formatCurrency(selectedProduct.last_price || 0)}</p>
+                                <p><strong>Cửa hàng hiện tại:</strong> {selectedProduct.store_name}</p>
                             </div>
                             {moveError && (
                                 <div className="mb-4 p-2 bg-red-100 text-red-700 rounded">
@@ -187,7 +187,7 @@ export function StoreList() {
                                         <StoreIcon className="h-5 w-5 text-blue-500" />
                                         <CardTitle>{store.name}</CardTitle>
                                         <span className="ml-auto text-sm font-normal text-gray-500">
-                                            {store.products.length} products
+                                            {store.products.length} sản phẩm
                                         </span>
                                     </div>
                                     {store.location && (
@@ -197,7 +197,7 @@ export function StoreList() {
                                 <CardContent>
                                     {store.products.length === 0 ? (
                                         <div className="text-center py-4 text-gray-400">
-                                            No available products
+                                            Không có sản phẩm trong kho.
                                         </div>
                                     ) : (
                                         <div className="overflow-x-auto">
@@ -205,8 +205,8 @@ export function StoreList() {
                                                 <thead className="bg-gray-50">
                                                     <tr>
                                                         <th className="px-3 py-2 text-left">ID</th>
-                                                        <th className="px-3 py-2 text-left">Type</th>
-                                                        <th className="px-3 py-2 text-right">Price</th>
+                                                        <th className="px-3 py-2 text-left">Loại</th>
+                                                        <th className="px-3 py-2 text-right">Giá</th>
                                                         <th className="px-3 py-2 text-center">Action</th>
                                                     </tr>
                                                 </thead>
@@ -228,7 +228,7 @@ export function StoreList() {
                                                                     })}
                                                                     className="text-blue-600 hover:text-blue-800"
                                                                 >
-                                                                    Move
+                                                                    Di chuyển
                                                                 </Button>
                                                             </td>
                                                         </tr>
@@ -236,7 +236,7 @@ export function StoreList() {
                                                 </tbody>
                                                 <tfoot className="bg-gray-100">
                                                     <tr>
-                                                        <td colSpan={2} className="px-3 py-2 font-bold">Total</td>
+                                                        <td colSpan={2} className="px-3 py-2 font-bold">Tổng</td>
                                                         <td className="px-3 py-2 text-right font-bold text-blue-600">
                                                             {formatCurrency(getTotalValue(store.products))}
                                                         </td>

@@ -94,7 +94,7 @@ When products are ready and staff delivers them to the customer.
 
 ### Steps
 1. **Search Customer** - By name, phone number, or CCCD
-2. **View Pending Orders** - Shows customer's orders with products that have `sold` status
+2. **View Customer Orders** - Shows **all** customer sale orders, including already-processed ones
 3. **Select Order** - Click on an order to select it
 4. **Select Fulfillment Details**:
    - Date & Time
@@ -103,16 +103,26 @@ When products are ready and staff delivers them to the customer.
 5. **Review Products** - Can remove items if partial fulfillment
 6. **Submit** - Completes the fulfillment
 
+### ⚠️ Not Allowed
+Fulfillment is **blocked** if the original sale order has already been processed:
+- ❌ Order already has **FULFILLED** status → Cannot fulfill again
+- ❌ Order already has **BUYBACK** status → Cannot fulfill a returned order
+
+**Frontend behavior:** Orders with an existing status are displayed grayed out with a status badge (FULFILLED / BUYBACK) and cannot be clicked.
+
+**Backend behavior:** `TransactionService.create_fulfillment()` checks `get_linked_statuses()` and raises a `ValueError` if the order is already linked to a buyback or fulfillment transaction.
+
 ### Backend Flow
 ```
 POST /api/v1/transactions/fulfillment
 ```
+- **Validates** that the original sale has not been processed (no linked buyback/fulfillment)
 - Creates a `fulfillment` transaction linked to the original sale
 - Updates product status to `fulfilled`
 - Sets `linked_transaction_id` to the original sale transaction
 
 ### Order Status in List
-After fulfillment, the original sale order shows **"Fulfilled"** status in the Orders list.
+After fulfillment, the original sale order shows **"FULFILLED"** status badge in the Orders list.
 
 ---
 
@@ -126,24 +136,34 @@ When a customer returns products and receives money back.
 
 ### Steps
 1. **Search Customer** - By name, phone number, or CCCD
-2. **View Customer Orders** - Shows customer's sale transactions
+2. **View Customer Orders** - Shows **all** customer sale orders, including already-processed ones
 3. **Select Order** - Click on an order to select it
 4. **Set Buyback Prices** - For each product, enter the buyback price (defaults to original price)
 5. **Remove Items** - If only some items are being bought back
 6. **Select Payment Method** - Cash or Bank Transfer
 7. **Submit** - Completes the buyback
 
+### ⚠️ Not Allowed
+Buyback is **blocked** if the original sale order has already been processed:
+- ❌ Order already has **BUYBACK** status → Cannot buy back again
+- ❌ Order already has **FULFILLED** status → Cannot buy back a delivered order
+
+**Frontend behavior:** Orders with an existing status are displayed grayed out with a status badge (FULFILLED / BUYBACK) and cannot be clicked.
+
+**Backend behavior:** `TransactionService.create_buyback()` checks `get_linked_statuses()` and raises a `ValueError` if the order is already linked to a buyback or fulfillment transaction.
+
 ### Backend Flow
 ```
 POST /api/v1/transactions/buyback
 ```
+- **Validates** that the original sale has not been processed (no linked buyback/fulfillment)
 - Creates a `buyback` transaction linked to the original sale
 - Updates product status back to `available`
 - Updates product `last_price` to the buyback price
 - Sets `linked_transaction_id` to the original sale transaction
 
 ### Order Status in List
-After buyback, the original sale order shows **"Buyback"** status in the Orders list.
+After buyback, the original sale order shows **"BUYBACK"** status badge in the Orders list.
 
 ---
 
@@ -194,6 +214,21 @@ After buyback, the original sale order shows **"Buyback"** status in the Orders 
 ### Transaction Linking
 - **Buyback** and **Fulfillment** transactions have `linked_transaction_id` pointing to the original **Sale** transaction
 - This allows tracking the full lifecycle of an order
+
+### Order Processing Restrictions
+Each sale order can only be processed **once** — either fulfilled or bought back, not both, and not repeatedly:
+
+| Current Order Status | Fulfillment Allowed? | Buyback Allowed? |
+|---------------------|---------------------|------------------|
+| _(no status)_ | ✅ Yes | ✅ Yes |
+| **FULFILLED** | ❌ No (already fulfilled) | ❌ No (already fulfilled) |
+| **BUYBACK** | ❌ No (already bought back) | ❌ No (already bought back) |
+
+**Validation layers:**
+1. **Frontend (UI):** Processed orders are grayed out and unclickable in the order list
+2. **Backend (Service):** `create_buyback()` and `create_fulfillment()` check `get_linked_statuses()` and raise `ValueError` if already processed
+
+**Test coverage:** See `backend/tests/test_allow_deny.py` for automated test cases covering all allow/deny scenarios.
 
 ---
 

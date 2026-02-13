@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card'
 import { Input } from '../components/ui/Input';
 import { Button } from '../components/ui/Button';
 import { ArrowLeft, Save } from 'lucide-react';
+import { formatDate, formatTime, todayHanoi } from '../lib/dateUtils';
 
 // Types
 interface Product {
@@ -41,6 +42,7 @@ interface Transaction {
     type: string;
     created_at: string;
     code?: string;  // Manufacturer order code
+    transaction_code?: string;
     items: TransactionItem[];
     store?: Store;
     staff?: Staff;
@@ -83,8 +85,8 @@ export function ManufacturerOrderList() {
 
     const [orders, setOrders] = useState<Transaction[]>([]);
     const [pendingProducts, setPendingProducts] = useState<Product[]>([]);
-    const [startDate, setStartDate] = useState<string>(new Date().toISOString().split('T')[0]);
-    const [endDate, setEndDate] = useState<string>(new Date().toISOString().split('T')[0]);
+    const [startDate, setStartDate] = useState<string>(todayHanoi());
+    const [endDate, setEndDate] = useState<string>(todayHanoi());
     const [loading, setLoading] = useState(false);
 
     // Track delivery status changes
@@ -100,7 +102,7 @@ export function ManufacturerOrderList() {
         try {
             const [ordersRes, pendingRes] = await Promise.all([
                 axios.get('/api/v1/transactions/', {
-                    params: { start_date: startDate, end_date: endDate, tx_type: 'mfr' }
+                    params: { start_date: startDate, end_date: endDate, tx_type: 'Đặt hàng NSX' }
                 }),
                 axios.get('/api/v1/products/pending-manufacturer')
             ]);
@@ -175,7 +177,7 @@ export function ManufacturerOrderList() {
                         <Button variant="ghost" onClick={() => navigate('/dashboard')}>
                             <ArrowLeft className="h-5 w-5" />
                         </Button>
-                        <h1 className="text-3xl font-bold text-gray-900">Manufacturer Orders</h1>
+                        <h1 className="text-3xl font-bold text-gray-900">Đơn hàng NSX</h1>
                     </div>
 
                     {/* Save Delivery Changes Button */}
@@ -196,7 +198,7 @@ export function ManufacturerOrderList() {
                     <CardContent className="p-4">
                         <div className="flex gap-4 items-end">
                             <div>
-                                <label className="block text-sm font-medium mb-1">Start Date</label>
+                                <label className="block text-sm font-medium mb-1">Ngày bắt đầu</label>
                                 <Input
                                     type="date"
                                     value={startDate}
@@ -204,14 +206,14 @@ export function ManufacturerOrderList() {
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium mb-1">End Date</label>
+                                <label className="block text-sm font-medium mb-1">Ngày kết thúc</label>
                                 <Input
                                     type="date"
                                     value={endDate}
                                     onChange={(e) => setEndDate(e.target.value)}
                                 />
                             </div>
-                            <Button onClick={fetchData}>Refresh</Button>
+                            <Button onClick={fetchData}>Tải lại</Button>
                         </div>
                     </CardContent>
                 </Card>
@@ -220,7 +222,7 @@ export function ManufacturerOrderList() {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <Card>
                         <CardHeader className="pb-2">
-                            <CardTitle className="text-sm font-medium">Total Orders</CardTitle>
+                            <CardTitle className="text-sm font-medium">Tổng số đơn hàng</CardTitle>
                         </CardHeader>
                         <CardContent>
                             <div className="text-2xl font-bold">{orders.length}</div>
@@ -228,7 +230,7 @@ export function ManufacturerOrderList() {
                     </Card>
                     <Card>
                         <CardHeader className="pb-2">
-                            <CardTitle className="text-sm font-medium">Total Order Amount</CardTitle>
+                            <CardTitle className="text-sm font-medium">Tổng giá trị đơn hàng</CardTitle>
                         </CardHeader>
                         <CardContent>
                             <div className="text-2xl font-bold text-blue-600">{formatCurrency(totalOrderAmount)}</div>
@@ -236,7 +238,7 @@ export function ManufacturerOrderList() {
                     </Card>
                     <Card>
                         <CardHeader className="pb-2">
-                            <CardTitle className="text-sm font-medium">Pending Products</CardTitle>
+                            <CardTitle className="text-sm font-medium">Sản phẩm chưa đặt hàng</CardTitle>
                         </CardHeader>
                         <CardContent>
                             <div className="text-2xl font-bold text-orange-600">{totalPendingProducts} items</div>
@@ -249,7 +251,7 @@ export function ManufacturerOrderList() {
                 <Card>
                     <CardHeader>
                         <div className="flex justify-between items-center">
-                            <CardTitle>Manufacturer Orders ({orders.length})</CardTitle>
+                            <CardTitle>Đơn hàng NSX ({orders.length})</CardTitle>
                             <div className="flex items-center gap-2 text-sm text-gray-500">
                                 <span>Toggle delivery status for each product</span>
                             </div>
@@ -268,7 +270,7 @@ export function ManufacturerOrderList() {
                                         <div className="flex justify-between items-start mb-3">
                                             <div>
                                                 <div className="flex items-center gap-2">
-                                                    <span className="font-bold">Order #{order.id}</span>
+                                                    <span className="font-bold">{order.transaction_code || `Order #${order.id}`}</span>
                                                     {order.code && (
                                                         <span className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded text-sm">
                                                             {order.code}
@@ -276,8 +278,8 @@ export function ManufacturerOrderList() {
                                                     )}
                                                 </div>
                                                 <div className="text-sm text-gray-500">
-                                                    {new Date(order.created_at).toLocaleDateString()}{' '}
-                                                    {new Date(order.created_at).toLocaleTimeString()}
+                                                    {formatDate(order.created_at)}{' '}
+                                                    {formatTime(order.created_at)}
                                                 </div>
                                             </div>
                                             <div className="text-right">
@@ -292,10 +294,11 @@ export function ManufacturerOrderList() {
                                         <table className="w-full text-sm">
                                             <thead className="bg-gray-100">
                                                 <tr>
-                                                    <th className="px-3 py-2 text-left">Product ID</th>
-                                                    <th className="px-3 py-2 text-left">Type</th>
-                                                    <th className="px-3 py-2 text-right">Price</th>
-                                                    <th className="px-3 py-2 text-center">Delivered from MFR</th>
+                                                    <th className="px-3 py-2 text-left">Mã sản phẩm</th>
+                                                    <th className="px-3 py-2 text-left">Loại</th>
+                                                    <th className="px-3 py-2 text-right">Giá</th>
+                                                    <th className="px-3 py-2 text-center">Trạng thái</th>
+                                                    <th className="px-3 py-2 text-center">Đã nhận hàng NSX</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
@@ -311,6 +314,19 @@ export function ManufacturerOrderList() {
                                                             <td className="px-3 py-2">#{item.product.id}</td>
                                                             <td className="px-3 py-2">{item.product.product_type}</td>
                                                             <td className="px-3 py-2 text-right">{formatCurrency(item.price_at_time)}</td>
+                                                            <td className="px-3 py-2 text-center">
+                                                                {item.product.status === 'Đã bán lại NSX' ? (
+                                                                    <span className="inline-block bg-red-100 text-red-700 px-2 py-0.5 rounded text-xs font-medium">
+                                                                        Đã bán lại NSX
+                                                                    </span>
+                                                                ) : item.product.status === 'Đã nhận hàng NSX' ? (
+                                                                    <span className="inline-block bg-green-100 text-green-700 px-2 py-0.5 rounded text-xs font-medium">
+                                                                        Đã nhận hàng NSX
+                                                                    </span>
+                                                                ) : (
+                                                                    <span className="text-gray-400 text-xs">-</span>
+                                                                )}
+                                                            </td>
                                                             <td className="px-3 py-2">
                                                                 <div className="flex items-center justify-center gap-2">
                                                                     <IOSSwitch
@@ -339,7 +355,7 @@ export function ManufacturerOrderList() {
                     <CardHeader>
                         <div className="flex justify-between items-center">
                             <CardTitle className="text-orange-600">
-                                Pending from Customer Orders ({pendingProducts.length})
+                                Sản phẩm chưa đặt hàng ({pendingProducts.length})
                             </CardTitle>
                             {pendingProducts.length > 0 && (
                                 <Button onClick={() => navigate('/manufacturer-order')}>
@@ -348,25 +364,25 @@ export function ManufacturerOrderList() {
                             )}
                         </div>
                         <p className="text-sm text-gray-500 mt-1">
-                            Products from customer orders that need to be ordered from manufacturer
+                            Sản phẩm từ đơn hàng khách hàng cần đặt hàng từ NSX
                         </p>
                     </CardHeader>
                     <CardContent>
                         {pendingProducts.length === 0 ? (
                             <div className="text-center py-4 text-gray-500">
-                                No pending products. All customer orders have been ordered from manufacturer.
+                                Không có sản phẩm chưa đặt hàng. Tất cả đơn hàng khách hàng đã được đặt hàng từ NSX.
                             </div>
                         ) : (
                             <div className="overflow-x-auto">
                                 <table className="w-full text-sm">
                                     <thead className="bg-orange-50">
                                         <tr>
-                                            <th className="px-4 py-3 text-left">Product ID</th>
-                                            <th className="px-4 py-3 text-left">Type</th>
-                                            <th className="px-4 py-3 text-left">Customer</th>
-                                            <th className="px-4 py-3 text-left">Order Date</th>
-                                            <th className="px-4 py-3 text-left">Store</th>
-                                            <th className="px-4 py-3 text-right">Price</th>
+                                            <th className="px-4 py-3 text-left">Mã sản phẩm</th>
+                                            <th className="px-4 py-3 text-left">Loại</th>
+                                            <th className="px-4 py-3 text-left">Khách hàng</th>
+                                            <th className="px-4 py-3 text-left">Ngày đặt hàng</th>
+                                            <th className="px-4 py-3 text-left">Cửa hàng</th>
+                                            <th className="px-4 py-3 text-right">Giá</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -377,7 +393,7 @@ export function ManufacturerOrderList() {
                                                 <td className="px-4 py-3 font-medium">{product.customer_name || '-'}</td>
                                                 <td className="px-4 py-3">
                                                     {product.order_date
-                                                        ? new Date(product.order_date).toLocaleDateString()
+                                                        ? formatDate(product.order_date)
                                                         : '-'}
                                                 </td>
                                                 <td className="px-4 py-3">{product.store_name || '-'}</td>
@@ -389,7 +405,7 @@ export function ManufacturerOrderList() {
                                     </tbody>
                                     <tfoot className="bg-orange-100">
                                         <tr>
-                                            <td colSpan={5} className="px-4 py-3 font-bold">Total</td>
+                                            <td colSpan={5} className="px-4 py-3 font-bold">Tổng</td>
                                             <td className="px-4 py-3 text-right font-bold text-orange-600">
                                                 {formatCurrency(totalPendingValue)}
                                             </td>

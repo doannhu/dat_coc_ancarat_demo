@@ -1,5 +1,5 @@
 from typing import List
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Body
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.session import get_db
 from . import schemas as product_schema
@@ -36,6 +36,19 @@ async def read_pending_manufacturer_products(
 ):
     """Get products from customer orders not yet ordered from manufacturer"""
     return await service.get_pending_manufacturer_order()
+
+from pydantic import BaseModel
+
+class ProductIdsRequest(BaseModel):
+    product_ids: List[int]
+
+@router.post("/status-info", response_model=List[product_schema.ProductStatusInfo])
+async def get_products_status_info(
+    payload: ProductIdsRequest, 
+    service: ProductService = Depends(get_service)
+):
+    """Get detailed status info (Sale/Buyback history) for products"""
+    return await service.get_status_info(payload.product_ids)
 
 @router.get("/store/{store_id}", response_model=List[product_schema.Product])
 async def read_products_by_store(
@@ -90,7 +103,7 @@ async def create_product(
 ):
     return await service.create_product(product_in=product)
 
-@router.get("/{id}", response_model=product_schema.ProductInDBBase)
+@router.get("/{id}", response_model=product_schema.Product)
 async def read_product(
     id: int, 
     service: ProductService = Depends(get_service)
@@ -121,3 +134,5 @@ async def delete_product(
         raise HTTPException(status_code=404, detail="Product not found")
     await service.delete_product(product_id=id)
     return {"ok": True}
+
+## NOTE: Swap endpoint moved to /api/v1/transactions/swap for proper audit tracking

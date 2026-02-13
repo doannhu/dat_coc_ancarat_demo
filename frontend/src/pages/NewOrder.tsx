@@ -5,6 +5,7 @@ import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
 import { Trash } from 'lucide-react';
+import { nowHanoiLocal, hanoiToISO } from '../lib/dateUtils';
 
 // Types
 interface Store { id: number; name: string; }
@@ -20,7 +21,7 @@ export function NewOrder() {
     const [customers, setCustomers] = useState<Customer[]>([]);
 
     const [selectedStore, setSelectedStore] = useState<number>(0);
-    const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().slice(0, 16));
+    const [selectedDate, setSelectedDate] = useState<string>(nowHanoiLocal());
     const [searchCustomer, setSearchCustomer] = useState('');
     const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
     const [isCreatingCustomer, setIsCreatingCustomer] = useState(false);
@@ -151,7 +152,7 @@ export function NewOrder() {
                 customer_id: selectedCustomer.id,
                 store_id: selectedStore,
                 items: orderItems,
-                created_at: new Date(selectedDate).toISOString(),
+                created_at: hanoiToISO(selectedDate),
                 payment_method: paymentMethod
             };
             console.log("Submitting:", payload);

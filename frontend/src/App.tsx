@@ -7,7 +7,10 @@ import { ManufacturerOrder } from './pages/ManufacturerOrder';
 import { ManufacturerOrderList } from './pages/ManufacturerOrderList';
 import { Buyback } from './pages/Buyback';
 import { Fulfillment } from './pages/Fulfillment';
+import { SellBack } from './pages/SellBack';
+import { ManufacturerReceive } from './pages/ManufacturerReceive';
 import { Orders } from './pages/Orders';
+import { SwapProducts } from './pages/SwapProducts';
 import { StoreList } from './pages/StoreList';
 import { type ReactNode } from 'react';
 
@@ -75,6 +78,30 @@ function App() {
             element={
               <PrivateRoute>
                 <Fulfillment />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/sell-back"
+            element={
+              <PrivateRoute>
+                <SellBack />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/manufacturer-receive"
+            element={
+              <PrivateRoute>
+                <ManufacturerReceive />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/swap-products"
+            element={
+              <PrivateRoute>
+                <SwapProducts />
               </PrivateRoute>
             }
           />

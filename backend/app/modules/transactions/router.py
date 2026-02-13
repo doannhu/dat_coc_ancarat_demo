@@ -34,6 +34,15 @@ async def read_transactions(
 ):
     return await service.get_transactions(skip=skip, limit=limit, start_date=start_date, end_date=end_date, tx_type=tx_type)
 
+@router.get("/customer/{customer_id}", response_model=List[transaction_schema.Transaction])
+async def get_customer_transactions(
+    customer_id: int,
+    tx_type: Optional[str] = None,
+    service: TransactionService = Depends(get_service)
+):
+    """Get all transactions for a specific customer"""
+    return await service.get_transactions_by_customer(customer_id=customer_id, tx_type=tx_type)
+
 @router.get("/{id}", response_model=transaction_schema.Transaction)
 async def read_transaction(
     id: int, 
@@ -63,15 +72,6 @@ async def create_manufacturer_order(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-@router.get("/customer/{customer_id}", response_model=List[transaction_schema.Transaction])
-async def get_customer_transactions(
-    customer_id: int,
-    tx_type: Optional[str] = None,
-    service: TransactionService = Depends(get_service)
-):
-    """Get all transactions for a specific customer"""
-    return await service.get_transactions_by_customer(customer_id=customer_id, tx_type=tx_type)
-
 @router.post("/buyback", response_model=transaction_schema.Transaction)
 async def create_buyback(
     buyback: transaction_schema.BuybackCreate,
@@ -91,5 +91,38 @@ async def create_fulfillment(
     """Create a fulfillment transaction - products delivered to customer"""
     try:
         return await service.create_fulfillment(fulfillment_in=fulfillment)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@router.post("/sell-back", response_model=transaction_schema.Transaction)
+async def create_sell_back(
+    sell_back: transaction_schema.SellBackCreate,
+    service: TransactionService = Depends(get_service)
+):
+    """Create a sell-back transaction - products sold back to manufacturer"""
+    try:
+        return await service.create_sell_back(sell_back_in=sell_back)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@router.post("/manufacturer-receive", response_model=transaction_schema.Transaction)
+async def create_manufacturer_receive(
+    receive: transaction_schema.ManufacturerReceiveCreate,
+    service: TransactionService = Depends(get_service)
+):
+    """Create a manufacturer receive transaction - products received from manufacturer"""
+    try:
+        return await service.create_manufacturer_receive(receive_in=receive)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@router.post("/swap", response_model=transaction_schema.Transaction)
+async def create_swap(
+    swap: transaction_schema.SwapCreate,
+    service: TransactionService = Depends(get_service)
+):
+    """Swap two products between customers/inventory with audit trail"""
+    try:
+        return await service.create_swap(swap_in=swap)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))

@@ -10,17 +10,22 @@ class ProductType(str, Enum):
     KG_1 = "1 kg"
 
 class ProductStatus(str, Enum):
-    AVAILABLE = "available"
-    SOLD = "sold"
-    IN_TRANSIT = "in_transit"
-    ORDERED = "ordered"
-    FULFILLED = "fulfilled"  # Product fulfilled/delivered to customer
+    AVAILABLE = "Có sẵn"
+    SOLD = "Đã bán"
+    IN_TRANSIT = "Đang vận chuyển"
+    ORDERED = "Đã đặt hàng"
+    FULFILLED = "Đã giao"  # Product fulfilled/delivered to customer
+    SOLD_BACK_MFR = "Đã bán lại NSX"  # Product sold back to manufacturer
+    RECEIVED_FROM_MFR = "Đã nhận hàng NSX"  # Product received from manufacturer
 
 class TransactionType(str, Enum):
-    SALE = "sale"          # Money In (Staff -> Customer)
-    BUYBACK = "buyback"    # Money Out (Customer -> Staff)
-    MANUFACTURER = "mfr"   # Money Out (Staff -> Ancarat)
-    FULFILLMENT = "fulfill"# Handover (Price 0)
+    SALE = "Đơn cọc"            # Money In (Staff -> Customer)
+    BUYBACK = "Mua lại"         # Money Out (Customer -> Staff)
+    MANUFACTURER = "Đặt hàng NSX"  # Money Out (Staff -> Ancarat)
+    FULFILLMENT = "Giao hàng"   # Handover (Price 0)
+    SELL_BACK_MFR = "Bán lại NSX"       # Sell back to manufacturer
+    MANUFACTURER_RECEIVED = "Nhận hàng NSX"  # Receive from manufacturer
+    SWAP = "Hoán đổi"           # Swap products between customers/inventory
 
 class Store(Base):
     __tablename__ = "stores"
@@ -69,6 +74,8 @@ class Product(Base):
     transactions = relationship(
         "Transaction",
         secondary="transaction_items",
+        primaryjoin="Product.id == TransactionItem.product_id",
+        secondaryjoin="Transaction.id == TransactionItem.transaction_id",
         back_populates="product_items",
         viewonly=True
     )
@@ -80,7 +87,7 @@ class Transaction(Base):
     customer_id = Column(Integer, ForeignKey("customers.id"), nullable=True)
     staff_id = Column(Integer, ForeignKey("staff.id"))
     store_id = Column(Integer, ForeignKey("stores.id"))
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=datetime.now)
     
     # Self-referencing key for Buybacks or Fulfillments
     linked_transaction_id = Column(Integer, ForeignKey("transactions.id"), nullable=True)
@@ -93,11 +100,14 @@ class Transaction(Base):
     linked_to = relationship("Transaction", remote_side=[id])
 
     payment_method = Column(String, nullable=True)
-    code = Column(String, nullable=True)
+    code = Column(String, nullable=True) # Manufacturer manual code
+    transaction_code = Column(String, nullable=True, unique=True) # Auto-generated system code
     
     product_items = relationship(
         "Product",
         secondary="transaction_items",
+        primaryjoin="Transaction.id == TransactionItem.transaction_id",
+        secondaryjoin="Product.id == TransactionItem.product_id",
         back_populates="transactions",
         viewonly=True
     )
@@ -109,6 +119,12 @@ class TransactionItem(Base):
     transaction_id = Column(Integer, ForeignKey("transactions.id"))
     product_id = Column(Integer, ForeignKey("products.id"))
     price_at_time = Column(Float) # Crucial for P&L math
+
+    # Swap tracking: when a product is swapped, we update product_id to the new product
+    # and record the original product_id here for audit trail
+    swapped = Column(Boolean, default=False)
+    original_product_id = Column(Integer, ForeignKey("products.id"), nullable=True)
     
     transaction = relationship("Transaction", back_populates="items")
-    product = relationship("Product")
+    product = relationship("Product", foreign_keys=[product_id])
+    original_product = relationship("Product", foreign_keys=[original_product_id])

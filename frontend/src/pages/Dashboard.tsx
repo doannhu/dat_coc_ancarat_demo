@@ -10,7 +10,10 @@ import {
     Store,
     Users,
     UserCheck,
-    LogOut
+    LogOut,
+    RotateCcw,
+    PackageCheck,
+    RefreshCw
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 
@@ -65,6 +68,27 @@ export function Dashboard() {
             icon: ClipboardList,
             color: 'bg-pink-100 text-pink-600',
             action: () => navigate('/manufacturer-orders'),
+            roles: ['admin'],
+        },
+        {
+            title: 'Bán lại NSX',
+            icon: RotateCcw,
+            color: 'bg-red-100 text-red-600',
+            action: () => navigate('/sell-back'),
+            roles: ['admin'],
+        },
+        {
+            title: 'Nhận hàng NSX',
+            icon: PackageCheck,
+            color: 'bg-green-100 text-green-600',
+            action: () => navigate('/manufacturer-receive'),
+            roles: ['admin'],
+        },
+        {
+            title: 'Hoán đổi SP',
+            icon: RefreshCw,
+            color: 'bg-yellow-100 text-yellow-600',
+            action: () => navigate('/swap-products'),
             roles: ['admin'],
         },
         {

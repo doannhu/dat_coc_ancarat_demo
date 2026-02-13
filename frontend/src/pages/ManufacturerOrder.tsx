@@ -6,6 +6,7 @@ import { Input } from '../components/ui/Input';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
 import { Trash, Plus } from 'lucide-react';
 import { formatCurrency } from '../lib/utils';
+import { formatDate, formatTime, nowHanoiLocal, todayHanoi, hanoiToISO } from '../lib/dateUtils';
 
 // Types
 interface Store { id: number; name: string; }
@@ -50,7 +51,7 @@ export function ManufacturerOrder() {
     // State
     const [stores, setStores] = useState<Store[]>([]);
     const [selectedStore, setSelectedStore] = useState<number>(0);
-    const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().slice(0, 16));
+    const [selectedDate, setSelectedDate] = useState<string>(nowHanoiLocal());
     const [orderCode, setOrderCode] = useState('');
 
     // Items
@@ -60,7 +61,7 @@ export function ManufacturerOrder() {
     const [mode, setMode] = useState<'existing' | 'new'>('existing');
 
     // Existing Product - Transaction Flow
-    const [searchDate, setSearchDate] = useState<string>(new Date().toISOString().slice(0, 10)); // YYYY-MM-DD
+    const [searchDate, setSearchDate] = useState<string>(todayHanoi()); // YYYY-MM-DD
     const [transactions, setTransactions] = useState<Transaction[]>([]);
     const [selectedTxId, setSelectedTxId] = useState<number | null>(null);
     const [txProducts, setTxProducts] = useState<Product[]>([]);
@@ -141,7 +142,7 @@ export function ManufacturerOrder() {
                 product_id: selectedProduct.id,
                 quantity: 1,
                 manufacturer_price: price,
-                display_name: `${selectedProduct.product_type} #${selectedProduct.id} ${selectedProduct.customer_name ? `(${selectedProduct.customer_name} - ${selectedProduct.order_date ? new Date(selectedProduct.order_date).toLocaleDateString() : ''})` : ''}`
+                display_name: `${selectedProduct.product_type} #${selectedProduct.id} ${selectedProduct.customer_name ? `(${selectedProduct.customer_name} - ${selectedProduct.order_date ? formatDate(selectedProduct.order_date) : ''})` : ''}`
             }]);
             setSelectedProduct(null);
         } else {
@@ -177,7 +178,7 @@ export function ManufacturerOrder() {
                 staff_id: 1, // HARDCODED
                 store_id: selectedStore,
                 items: orderItems,
-                created_at: new Date(selectedDate).toISOString(),
+                created_at: hanoiToISO(selectedDate),
                 code: orderCode
             };
             console.log("Submitting:", payload);
@@ -193,23 +194,23 @@ export function ManufacturerOrder() {
     return (
         <div className="min-h-screen bg-gray-50 p-6">
             <div className="max-w-4xl mx-auto space-y-6">
-                <h1 className="text-3xl font-bold text-gray-900">New Manufacturer Order (Ancarat)</h1>
+                <h1 className="text-3xl font-bold text-gray-900">Đặt hàng NSX mới</h1>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {/* Store & Info */}
                     <Card>
-                        <CardHeader><CardTitle>Order Info</CardTitle></CardHeader>
+                        <CardHeader><CardTitle>Thông tin đơn hàng NSX</CardTitle></CardHeader>
                         <CardContent className="space-y-4">
                             <div>
-                                <label className="block text-sm font-medium mb-1">Order Code</label>
+                                <label className="block text-sm font-medium mb-1">Mã đơn</label>
                                 <Input
                                     value={orderCode}
                                     onChange={(e) => setOrderCode(e.target.value)}
-                                    placeholder="e.g. MFR-2023-001"
+                                    placeholder="e.g. TT-260104-1292"
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium mb-1">Store</label>
+                                <label className="block text-sm font-medium mb-1">Cửa hàng</label>
                                 <select
                                     className="w-full rounded-md border border-gray-300 p-2"
                                     value={selectedStore}
@@ -219,7 +220,7 @@ export function ManufacturerOrder() {
                                 </select>
                             </div>
                             <div>
-                                <label className="block text-sm font-medium mb-1">Date</label>
+                                <label className="block text-sm font-medium mb-1">Ngày giờ</label>
                                 <Input
                                     type="datetime-local"
                                     value={selectedDate}
@@ -231,27 +232,27 @@ export function ManufacturerOrder() {
 
                     {/* Add Items */}
                     <Card>
-                        <CardHeader><CardTitle>Add Products</CardTitle></CardHeader>
+                        <CardHeader><CardTitle>Thêm sản phẩm</CardTitle></CardHeader>
                         <CardContent className="space-y-4">
                             <div className="flex gap-4 border-b pb-2">
                                 <button
                                     className={`text-sm font-medium pb-1 ${mode === 'existing' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500'}`}
                                     onClick={() => setMode('existing')}
                                 >
-                                    Existing Product
+                                    Sản phẩm khách hàng đã đặt hàng
                                 </button>
                                 <button
                                     className={`text-sm font-medium pb-1 ${mode === 'new' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500'}`}
                                     onClick={() => setMode('new')}
                                 >
-                                    New Product
+                                    Sản phẩm mới
                                 </button>
                             </div>
 
                             {mode === 'existing' ? (
                                 <div className="space-y-4">
                                     <div>
-                                        <label className="block text-sm font-medium mb-1">Look up Date</label>
+                                        <label className="block text-sm font-medium mb-1">Tìm kiếm theo ngày</label>
                                         <Input
                                             type="date"
                                             value={searchDate}
@@ -266,10 +267,10 @@ export function ManufacturerOrder() {
                                             value={selectedTxId || ''}
                                             onChange={(e) => setSelectedTxId(Number(e.target.value) || null)}
                                         >
-                                            <option value="">-- Select Transaction --</option>
+                                            <option value="">-- Chọn đơn hàng --</option>
                                             {transactions.map(tx => (
                                                 <option key={tx.id} value={tx.id}>
-                                                    #{tx.id} - {tx.customer?.name || 'Unknown'} ({new Date(tx.created_at).toLocaleTimeString()})
+                                                    #{tx.id} - {tx.customer?.name || 'Unknown'} ({formatTime(tx.created_at)})
                                                 </option>
                                             ))}
                                         </select>
@@ -277,7 +278,7 @@ export function ManufacturerOrder() {
 
                                     {selectedTxId && (
                                         <div>
-                                            <label className="block text-sm font-medium mb-1">Select Product from Transaction</label>
+                                            <label className="block text-sm font-medium mb-1">Chọn sản phẩm từ đơn hàng</label>
                                             <select
                                                 className="w-full rounded-md border border-gray-300 p-2"
                                                 value={selectedProduct?.id || ''}
@@ -288,7 +289,7 @@ export function ManufacturerOrder() {
                                                     if (p) setPrice(p.last_price || 0);
                                                 }}
                                             >
-                                                <option value="">-- Select Product --</option>
+                                                <option value="">-- Chọn sản phẩm --</option>
                                                 {txProducts.map(p => (
                                                     <option key={p.id} value={p.id}>
                                                         #{p.id} {p.product_type} ({p.status}) - {formatCurrency(p.last_price)}
@@ -312,7 +313,7 @@ export function ManufacturerOrder() {
                                                     <div><strong>Customer Order Info:</strong></div>
                                                     <div>Customer: {selectedProduct.customer_name}</div>
                                                     <div>Store: {selectedProduct.store_name}</div>
-                                                    <div>Date: {selectedProduct.order_date ? new Date(selectedProduct.order_date).toLocaleDateString() : '-'}</div>
+                                                    <div>Date: {selectedProduct.order_date ? formatDate(selectedProduct.order_date) : '-'}</div>
                                                 </div>
                                             )}
                                         </div>
@@ -320,7 +321,7 @@ export function ManufacturerOrder() {
                                 </div>
                             ) : (
                                 <div>
-                                    <label className="block text-sm font-medium mb-1">Product Type</label>
+                                    <label className="block text-sm font-medium mb-1">Loại sản phẩm</label>
                                     <select
                                         className="w-full rounded-md border border-gray-300 p-2"
                                         value={newItemType}
@@ -336,7 +337,7 @@ export function ManufacturerOrder() {
 
                             <div className="flex gap-4">
                                 <div className="w-24">
-                                    <label className="block text-sm font-medium mb-1">Qty</label>
+                                    <label className="block text-sm font-medium mb-1">Số lượng</label>
                                     <Input
                                         type="number"
                                         value={quantity}
@@ -345,7 +346,7 @@ export function ManufacturerOrder() {
                                     />
                                 </div>
                                 <div className="flex-1">
-                                    <label className="block text-sm font-medium mb-1">Mfr Price</label>
+                                    <label className="block text-sm font-medium mb-1">Giá NSX</label>
                                     <Input
                                         type="number"
                                         value={price}
@@ -355,7 +356,7 @@ export function ManufacturerOrder() {
                             </div>
 
                             <Button onClick={addItem} className="w-full">
-                                <Plus className="w-4 h-4 mr-2" /> Add to Order
+                                <Plus className="w-4 h-4 mr-2" /> Thêm sp vào đơn hàng
                             </Button>
                         </CardContent>
                     </Card>
@@ -363,17 +364,17 @@ export function ManufacturerOrder() {
 
                 {/* Order Summary */}
                 <Card>
-                    <CardHeader><CardTitle>Order Items ({orderItems.length})</CardTitle></CardHeader>
+                    <CardHeader><CardTitle>Sản phẩm trong đơn hàng ({orderItems.length})</CardTitle></CardHeader>
                     <CardContent>
                         {orderItems.length > 0 ? (
                             <div className="border rounded-lg overflow-hidden">
                                 <table className="w-full text-sm">
                                     <thead className="bg-gray-100">
                                         <tr>
-                                            <th className="p-2 text-left">Product</th>
-                                            <th className="p-2 text-right">Qty</th>
-                                            <th className="p-2 text-right">Price</th>
-                                            <th className="p-2 text-right">Total</th>
+                                            <th className="p-2 text-left">Sản phẩm</th>
+                                            <th className="p-2 text-right">Số lượng</th>
+                                            <th className="p-2 text-right">Giá</th>
+                                            <th className="p-2 text-right">Tổng</th>
                                             <th className="p-2"></th>
                                         </tr>
                                     </thead>
@@ -394,7 +395,7 @@ export function ManufacturerOrder() {
                                     </tbody>
                                     <tfoot className="bg-gray-50 font-bold">
                                         <tr>
-                                            <td colSpan={3} className="p-2 text-right">Total:</td>
+                                            <td colSpan={3} className="p-2 text-right">Tổng:</td>
                                             <td className="p-2 text-right">
                                                 {formatCurrency(orderItems.reduce((sum, item) => sum + (item.manufacturer_price * item.quantity), 0))}
                                             </td>
@@ -404,12 +405,12 @@ export function ManufacturerOrder() {
                                 </table>
                             </div>
                         ) : (
-                            <div className="text-center py-8 text-gray-500">No items added yet.</div>
+                            <div className="text-center py-8 text-gray-500">Không có sản phẩm trong đơn hàng.</div>
                         )}
 
                         <div className="mt-6 flex justify-end">
                             <Button className="w-40 text-lg py-6" onClick={handleSubmit} disabled={orderItems.length === 0}>
-                                Submit Order
+                                Ghi đơn hàng
                             </Button>
                         </div>
                     </CardContent>

@@ -1,5 +1,5 @@
 from datetime import date, datetime
-from typing import Optional
+from typing import Optional, List, Dict
 from sqlalchemy import select, extract, cast, Date, func
 from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -13,7 +13,7 @@ class TransactionRepository:
     async def get(self, id: int):
         # Eager load items and relationships
         query = select(Transaction).options(
-            selectinload(Transaction.items).selectinload(TransactionItem.product),
+            selectinload(Transaction.items).selectinload(TransactionItem.product).selectinload(Product.store),
             selectinload(Transaction.customer),
             selectinload(Transaction.store),
             selectinload(Transaction.staff)
@@ -24,7 +24,7 @@ class TransactionRepository:
     async def get_multi(self, skip: int = 0, limit: int = 100, start_date: Optional[date] = None, end_date: Optional[date] = None, tx_type: Optional[str] = None):
         # Eager load items and relationships
         query = select(Transaction).options(
-            selectinload(Transaction.items).selectinload(TransactionItem.product),
+            selectinload(Transaction.items).selectinload(TransactionItem.product).selectinload(Product.store),
             selectinload(Transaction.customer),
             selectinload(Transaction.store),
             selectinload(Transaction.staff)
@@ -66,7 +66,8 @@ class TransactionRepository:
     async def get_by_customer(self, customer_id: int, tx_type: str = None):
         """Get transactions by customer ID, optionally filtered by type"""
         query = select(Transaction).options(
-            selectinload(Transaction.items).selectinload(TransactionItem.product),
+            selectinload(Transaction.items).selectinload(TransactionItem.product).selectinload(Product.store),
+            selectinload(Transaction.items).selectinload(TransactionItem.original_product),
             selectinload(Transaction.customer),
             selectinload(Transaction.store),
             selectinload(Transaction.staff)
@@ -92,7 +93,12 @@ class TransactionRepository:
             Transaction.type
         ).where(
             Transaction.linked_transaction_id.in_(transaction_ids),
-            Transaction.type.in_([TransactionType.BUYBACK, TransactionType.FULFILLMENT])
+            Transaction.type.in_([
+                TransactionType.BUYBACK, 
+                TransactionType.FULFILLMENT, 
+                TransactionType.SELL_BACK_MFR,
+                TransactionType.MANUFACTURER_RECEIVED
+            ])
         )
         
         result = await self.db.execute(query)
@@ -101,14 +107,45 @@ class TransactionRepository:
         # Build status map - prioritize buyback over fulfillment if both exist
         status_map = {}
         for linked_id, tx_type in rows:
+            status_val = 'Đã giao' if tx_type == TransactionType.FULFILLMENT else tx_type
+            
             if linked_id not in status_map:
-                status_map[linked_id] = tx_type
+                status_map[linked_id] = status_val
             elif tx_type == TransactionType.BUYBACK:
                 # Buyback takes priority
-                status_map[linked_id] = tx_type
+                status_map[linked_id] = status_val
         
         return status_map
 
+    async def get_product_customer_names(self, product_ids: List[int]) -> Dict[int, str]:
+        """For each product_id, get the customer name from the latest SALE transaction that has this product."""
+        if not product_ids:
+            return {}
+        # Subquery: latest sale transaction per product (by item.product_id)
+        subq = (
+            select(
+                TransactionItem.product_id,
+                Transaction.customer_id,
+                func.row_number().over(
+                    partition_by=TransactionItem.product_id,
+                    order_by=Transaction.created_at.desc()
+                ).label("rn"),
+            )
+            .select_from(TransactionItem)
+            .join(Transaction, Transaction.id == TransactionItem.transaction_id)
+            .where(
+                TransactionItem.product_id.in_(product_ids),
+                Transaction.type == TransactionType.SALE,
+            )
+        )
+        subq = subq.subquery()
+        query = (
+            select(subq.c.product_id, Customer.name)
+            .outerjoin(Customer, Customer.id == subq.c.customer_id)
+            .where(subq.c.rn == 1)
+        )
+        result = await self.db.execute(query)
+        return {row.product_id: (row.name or "") for row in result.all()}
 
     async def get_stats(self, start_date: Optional[date] = None, end_date: Optional[date] = None):
         # Base query for Sales

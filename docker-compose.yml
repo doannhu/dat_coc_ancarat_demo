@@ -8,6 +8,7 @@ services:
       POSTGRES_USER: user
       POSTGRES_PASSWORD: password
       POSTGRES_DB: dbname
+      TZ: Asia/Ho_Chi_Minh
     ports:
       - "5433:5432"
     volumes:
@@ -23,6 +24,7 @@ services:
       - "8000:8000"
     environment:
       - DATABASE_URL=postgresql+asyncpg://user:password@db/dbname
+      - TZ=Asia/Ho_Chi_Minh
     depends_on:
       - db
 

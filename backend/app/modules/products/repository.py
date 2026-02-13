@@ -9,10 +9,11 @@ class ProductRepository:
         self.db = db
 
     async def get(self, id: int):
-        # Eager load transactions -> customer/store for details
+        # Eager load transactions -> customer/store for details, and Product.store
         query = select(Product).options(
             selectinload(Product.transactions).selectinload(Transaction.customer),
-            selectinload(Product.transactions).selectinload(Transaction.store)
+            selectinload(Product.transactions).selectinload(Transaction.store),
+            selectinload(Product.store)
         ).where(Product.id == id)
         result = await self.db.execute(query)
         return result.scalar_one_or_none()

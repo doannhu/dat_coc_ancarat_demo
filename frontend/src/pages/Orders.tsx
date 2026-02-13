@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card'
 import { Input } from '../components/ui/Input';
 import { Button } from '../components/ui/Button';
 import styles from './Orders.module.css';
+import { formatTime, todayHanoi } from '../lib/dateUtils';
 
 // Types (should ideally be shared/generated, but defining here for now)
 interface Product {
@@ -19,6 +20,9 @@ interface TransactionItem {
     product_id: number;
     price_at_time: number;
     product: Product;
+    swapped: boolean;
+    original_product_id: number | null;
+    original_product: Product | null;
 }
 
 interface Customer {
@@ -42,12 +46,13 @@ interface Transaction {
     id: number;
     type: string;
     created_at: string;
+    transaction_code?: string;
     payment_method: string;
     items: TransactionItem[];
     customer?: Customer;
     store?: Store;
     staff?: Staff;
-    order_status?: string;  // 'buyback', 'fulfill', or null
+    order_status?: string;  // 'Mua lại', 'Đã giao', 'Bán lại NSX', or null
 }
 
 interface StoreStats {
@@ -66,8 +71,8 @@ interface TransactionStats {
 export const Orders = () => {
     const [orders, setOrders] = useState<Transaction[]>([]);
     const [stats, setStats] = useState<TransactionStats | null>(null);
-    const [startDate, setStartDate] = useState<string>(new Date().toISOString().split('T')[0]);
-    const [endDate, setEndDate] = useState<string>(new Date().toISOString().split('T')[0]);
+    const [startDate, setStartDate] = useState<string>(todayHanoi());
+    const [endDate, setEndDate] = useState<string>(todayHanoi());
     const [loading, setLoading] = useState(false);
 
     useEffect(() => {
@@ -79,7 +84,7 @@ export const Orders = () => {
         try {
             const [ordersRes, statsRes] = await Promise.all([
                 axios.get('/api/v1/transactions/', {
-                    params: { start_date: startDate, end_date: endDate, tx_type: 'sale' }
+                    params: { start_date: startDate, end_date: endDate, tx_type: 'Đơn cọc' }
                 }),
                 axios.get('/api/v1/transactions/stats', {
                     params: { start_date: startDate, end_date: endDate }
@@ -105,13 +110,13 @@ export const Orders = () => {
 
     return (
         <div className={styles.container}>
-            <h1 className={styles.title}>Order List</h1>
+            <h1 className={styles.title}>Danh sách đơn hàng</h1>
 
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
                 <Card>
                     <CardHeader className="pb-2">
-                        <CardTitle className="text-sm font-medium">Total Orders</CardTitle>
+                        <CardTitle className="text-sm font-medium">Tổng số đơn hàng</CardTitle>
                     </CardHeader>
                     <CardContent>
                         <div className="text-2xl font-bold">{stats?.total_orders || 0}</div>
@@ -119,7 +124,7 @@ export const Orders = () => {
                 </Card>
                 <Card>
                     <CardHeader className="pb-2">
-                        <CardTitle className="text-sm font-medium">Total Sales Revenue</CardTitle>
+                        <CardTitle className="text-sm font-medium">Tổng doanh thu</CardTitle>
                     </CardHeader>
                     <CardContent>
                         <div className="text-2xl font-bold text-green-600">
@@ -129,7 +134,7 @@ export const Orders = () => {
                 </Card>
                 <Card>
                     <CardHeader className="pb-2">
-                        <CardTitle className="text-sm font-medium">Payment Methods</CardTitle>
+                        <CardTitle className="text-sm font-medium">Phương thức thanh toán</CardTitle>
                     </CardHeader>
                     <CardContent>
                         <div className="text-xs space-y-1">
@@ -146,7 +151,7 @@ export const Orders = () => {
                 </Card>
                 <Card>
                     <CardHeader className="pb-2">
-                        <CardTitle className="text-sm font-medium">Store Breakdown</CardTitle>
+                        <CardTitle className="text-sm font-medium">Phân tích cửa hàng</CardTitle>
                     </CardHeader>
                     <CardContent>
                         <div className="text-xs space-y-1 max-h-20 overflow-y-auto">
@@ -163,7 +168,7 @@ export const Orders = () => {
 
             <div className={styles.filterSection}>
                 <div>
-                    <label className={styles.label}>Start Date</label>
+                    <label className={styles.label}>Ngày bắt đầu</label>
                     <Input
                         type="date"
                         value={startDate}
@@ -171,34 +176,34 @@ export const Orders = () => {
                     />
                 </div>
                 <div>
-                    <label className={styles.label}>End Date</label>
+                    <label className={styles.label}>Ngày kết thúc</label>
                     <Input
                         type="date"
                         value={endDate}
                         onChange={(e) => setEndDate(e.target.value)}
                     />
                 </div>
-                <Button onClick={fetchOrders} className="">Refresh</Button>
+                <Button onClick={fetchOrders} className="">Tải lại</Button>
             </div>
 
             <Card>
                 <CardHeader>
-                    <CardTitle>Transactions ({orders.length})</CardTitle>
+                    <CardTitle>Đơn hàng ({orders.length})</CardTitle>
                 </CardHeader>
                 <CardContent>
                     <div className={styles.tableContainer}>
                         <table className={styles.table}>
                             <thead className={styles.thead}>
                                 <tr>
-                                    <th className={styles.th}>ID</th>
-                                    <th className={styles.th}>Type</th>
-                                    <th className={styles.th}>Status</th>
-                                    <th className={styles.th}>Time</th>
-                                    <th className={styles.th}>Customer</th>
-                                    <th className={styles.th}>Store</th>
-                                    <th className={styles.th}>Staff</th>
-                                    <th className={styles.th}>Products</th>
-                                    <th className={styles.th + " text-right"}>Total Money</th>
+                                    <th className={styles.th}>Mã đơn</th>
+                                    <th className={styles.th}>Loại</th>
+                                    <th className={styles.th}>Trạng thái</th>
+                                    <th className={styles.th}>Thời gian</th>
+                                    <th className={styles.th}>Khách hàng</th>
+                                    <th className={styles.th}>Cửa hàng</th>
+                                    <th className={styles.th}>Nhân viên</th>
+                                    <th className={styles.th}>Sản phẩm</th>
+                                    <th className={styles.th + " text-right"}>Tổng tiền</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -208,35 +213,34 @@ export const Orders = () => {
                                     </tr>
                                 ) : orders.length === 0 ? (
                                     <tr>
-                                        <td colSpan={9} className={styles.loading}>No orders found for this date.</td>
+                                        <td colSpan={9} className={styles.loading}>Không có đơn hàng trong khoảng ngày này.</td>
                                     </tr>
                                 ) : (
                                     orders.map((order) => (
                                         <tr key={order.id} className={styles.tr}>
-                                            <td className={styles.td}>#{order.id}</td>
+                                            <td className={styles.td}>{order.transaction_code || `#${order.id}`}</td>
                                             <td className={styles.td}>
-                                                <span className={`${styles.badge} ${order.type === 'sale' ? styles.badgeSale :
-                                                    order.type === 'buyback' ? styles.badgeBuyback :
+                                                <span className={`${styles.badge} ${order.type === 'Đơn cọc' ? styles.badgeSale :
+                                                    order.type === 'Mua lại' ? styles.badgeBuyback :
                                                         styles.badgeDefault
                                                     }`}>
-                                                    {order.type.toUpperCase()}
+                                                    {order.type}
                                                 </span>
                                             </td>
                                             <td className={styles.td}>
                                                 {order.order_status ? (
-                                                    <span className={`${styles.badge} ${order.order_status === 'buyback' ? styles.badgeBuyback :
-                                                        order.order_status === 'fulfill' ? styles.badgeFulfill :
+                                                    <span className={`${styles.badge} ${order.order_status === 'Mua lại' ? styles.badgeBuyback :
+                                                        order.order_status === 'Đã giao' ? styles.badgeFulfill :
                                                             styles.badgeDefault
                                                         }`}>
-                                                        {order.order_status === 'buyback' ? 'Buyback' :
-                                                            order.order_status === 'fulfill' ? 'Fulfilled' : order.order_status}
+                                                        {order.order_status}
                                                     </span>
                                                 ) : (
                                                     <span className="text-gray-400">-</span>
                                                 )}
                                             </td>
                                             <td className={styles.td}>
-                                                {new Date(order.created_at).toLocaleTimeString()}
+                                                {formatTime(order.created_at)}
                                             </td>
                                             <td className={`${styles.td} font-medium`}>
                                                 {order.customer?.name || '-'}
@@ -248,7 +252,23 @@ export const Orders = () => {
                                                 <div className="space-y-1">
                                                     {order.items.map((item, idx) => (
                                                         <div key={idx} className="text-xs">
-                                                            {item.product?.product_type || 'Unknown'} - {formatCurrency(item.price_at_time)}
+                                                            {item.swapped && item.original_product ? (
+                                                                <div className="space-y-0.5">
+                                                                    <div className="line-through text-gray-400">
+                                                                        #{item.original_product_id} {item.original_product.product_type} - {formatCurrency(item.price_at_time)}
+                                                                    </div>
+                                                                    <div className="flex items-center gap-1">
+                                                                        <span className="px-1 py-0.5 bg-orange-100 text-orange-700 rounded text-[10px] font-medium">Hoán đổi</span>
+                                                                        <span className="font-medium text-orange-700">
+                                                                            → #{item.product_id} {item.product?.product_type || 'Unknown'}
+                                                                        </span>
+                                                                    </div>
+                                                                </div>
+                                                            ) : (
+                                                                <span>
+                                                                    {item.product?.product_type || 'Unknown'} - {formatCurrency(item.price_at_time)}
+                                                                </span>
+                                                            )}
                                                         </div>
                                                     ))}
                                                 </div>
