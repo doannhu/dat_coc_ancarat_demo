@@ -29,6 +29,7 @@ interface FulfillmentItem {
     product_type: string;
     price: number;
     is_delivered?: boolean;
+    status: string;
 }
 
 export function Fulfillment() {
@@ -88,15 +89,20 @@ export function Fulfillment() {
     };
 
     const fetchCustomerTransactions = async (customerId: number) => {
+        if (customerId == null || customerId === undefined) {
+            setCustomerTransactions([]);
+            return;
+        }
         try {
-            // Fetch all transactions for customer; filter to sale orders (Đơn cọc) on the client
-            // so we avoid any backend tx_type encoding mismatch
-            const res = await axios.get(`/api/v1/transactions/customer/${customerId}`);
-            const list = Array.isArray(res.data) ? res.data : [];
-            const saleOnly = list.filter((tx: Transaction) => tx.type === 'Đơn cọc');
-            setCustomerTransactions(saleOnly);
+            const res = await axios.get(`/api/v1/transactions/customer/${Number(customerId)}`);
+            const allTransactions: Transaction[] = Array.isArray(res.data) ? res.data : [];
+
+            // Filter only 'Đơn cọc' on frontend
+            const saleTransactions = allTransactions.filter((tx: Transaction) => tx.type?.trim() === 'Đơn cọc');
+
+            setCustomerTransactions(saleTransactions);
         } catch (e) {
-            console.error("Failed to fetch customer transactions", e);
+            console.error("Không thể lấy danh sách giao dịch", e);
             setCustomerTransactions([]);
         }
     };
@@ -116,14 +122,15 @@ export function Fulfillment() {
 
         setSelectedTransaction(tx);
         // Pre-populate fulfillment items from transaction items
-        // Only include items that have status 'sold' (not yet delivered)
+        // Only include items that are 'sold' or 'received from manufacturer' (ready for delivery)
         const items: FulfillmentItem[] = tx.items
-            .filter(item => item.product.status === 'Đã bán')
+            .filter(item => item.product.status === 'Đã bán' || item.product.status === 'Đã nhận hàng NSX')
             .map(item => ({
                 product_id: item.product_id,
                 product_type: item.product.product_type,
                 price: item.price_at_time,
-                is_delivered: item.product.is_delivered
+                is_delivered: item.product.is_delivered,
+                status: item.product.status
             }));
         setFulfillmentItems(items);
     };
@@ -136,20 +143,20 @@ export function Fulfillment() {
 
     const handleSubmit = async () => {
         if (!selectedTransaction) {
-            alert("Please select a transaction");
+            alert("Vui lòng chọn đơn hàng");
             return;
         }
         if (fulfillmentItems.length === 0) {
-            alert("Please add at least one item to fulfill");
+            alert("Vui lòng thêm ít nhất một sản phẩm");
             return;
         }
         if (!selectedStaffId) {
-            alert("Please select a staff member");
+            alert("Vui lòng chọn nhân viên");
             return;
         }
 
         // Check for non-delivered items
-        const hasUndeliveredItems = fulfillmentItems.some(item => !item.is_delivered);
+        const hasUndeliveredItems = fulfillmentItems.some(item => item.status !== 'Đã nhận hàng NSX');
         if (hasUndeliveredItems) {
             setShowWarningModal(true);
             return;
@@ -171,7 +178,7 @@ export function Fulfillment() {
             };
 
             await axios.post('/api/v1/transactions/fulfillment', payload);
-            alert("Fulfillment completed successfully! Products delivered to customer.");
+            alert("Đã giao hàng thành công");
             navigate('/dashboard');
         } catch (e: unknown) {
             const error = e as { response?: { data?: { detail?: string } } };
@@ -388,10 +395,10 @@ export function Fulfillment() {
                                                     </td>
                                                     <td className="p-2">{item.product_type}</td>
                                                     <td className="p-2">
-                                                        {item.is_delivered ? (
-                                                            <span className="text-green-600 font-medium">Có sẵn trong kho</span>
+                                                        {item.status === 'Đã nhận hàng NSX' ? (
+                                                            <span className="text-green-600 font-medium">Đã nhận hàng NSX</span>
                                                         ) : (
-                                                            <span className="text-orange-600 font-medium">Chưa nhận được hàng từ NSX</span>
+                                                            <span className="text-orange-600 font-medium">{item.status}</span>
                                                         )}
                                                     </td>
                                                     <td className="p-2 text-right">{formatCurrency(item.price)}</td>

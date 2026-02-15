@@ -32,3 +32,39 @@ Case 10 in real life:
 - Store_HT receives the product_id 29 from the manufacturer since product_id 30 already sold back to the manufacturer
 
 
+Cass 11: Fulfillment for multiple transactions (Trả hàng cho khách)
+- Make sure the list only contains the transactions that are 'Đã cọc' (Sold) or 'Đã nhận hàng NSX' (Received from manufacturer)
+
+
+Case 12: 
+- Store_A orders extra 2x1kg and 4x 5 lượng from manufacturer, raised an order_32. product_id=31 to product_id=36
+- Customer_A buys 1kg from store_A, raised an order_33. product_id=31
+- Customer_A sells back 1kg to store_A, raised an order_34. product_id=31. In Store_A Inventory, there is an available stock product_id=31
+- Customer_B buys 1kg from store_A, raised an order_35. product_id=31. In Store_A Inventory, there is no available stock product_id=31
+
+
+Case 13: moving product from one store to another
+- Store_A has 1 kg extra product_id=32, move the product_id=32 to store_B
+- Customer_A now able to buy 1kg from store_B
+- Product_id=32 is delivered to store_B
+- Customer_A receives the product_id=32 from store_B
+
+
+Business Rules:
+- KH đặt cọc -> Cửa hàng đặt hàng từ nhà sản xuất -> Nhà sản xuất giao hàng -> Cửa hàng nhận hàng -> Khách hàng nhận hàng
+- KH đặt cọc -> KH bán lại cho cửa hàng -> Cửa hàng đưa vào kho -> Cửa hàng bán lại cho nhà sản xuất
+- KH đặt cọc ->  KH bán lại cho cửa hàng -> Cửa hàng đưa vào kho -> Cửa hàng bán lại cho khách hàng khác -> Nhà sản xuất giao hàng -> Cửa hàng nhận hàng -> Khách hàng nhận hàng
+
+
+- Nhận hàng từ nhà sản xuất: 
+    - Hàng chưa được giao (khách đã nhận hàng), 
+    - Hàng chưa được nhận từ nhà sản xuất, 
+    - Hàng chưa bán lại cho nhà sản xuất
+- Bán lại đơn cho nhà sản xuất: 
+    - Hàng chưa được giao (khách đã nhận hàng), 
+    - Hàng chưa được bán lại cho nhà sản xuất và 
+    - Hàng chưa nhận được từ nhà sản xuất
+- Trả hàng cho khách hàng: 
+    - Hàng chưa được giao (khách đã nhận hàng), 
+    - Hàng chưa được bán lại cho nhà sản xuất và 
+    - Hàng đã nhận được từ nhà sản xuất

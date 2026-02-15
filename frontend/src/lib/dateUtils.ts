@@ -64,6 +64,18 @@ export function todayHanoi(): string {
 }
 
 /**
+ * Get the first day of the current month in Hanoi as "YYYY-MM-DD".
+ * Useful as default start date for order lists so recent orders are visible.
+ */
+export function startOfMonthHanoi(): string {
+    const now = new Date();
+    const hanoiStr = now.toLocaleString('sv-SE', { timeZone: HANOI_TZ });
+    const [datePart] = hanoiStr.split(' ');
+    const [y, m] = datePart.split('-');
+    return `${y}-${m}-01`;
+}
+
+/**
  * Convert a datetime-local input value (which is in Hanoi time) to an ISO string
  * that the backend can correctly interpret.
  * Appends +07:00 offset so the backend knows it's Hanoi time.

@@ -13,7 +13,10 @@ class TransactionRepository:
     async def get(self, id: int):
         # Eager load items and relationships
         query = select(Transaction).options(
-            selectinload(Transaction.items).selectinload(TransactionItem.product).selectinload(Product.store),
+            selectinload(Transaction.items).options(
+                selectinload(TransactionItem.product).selectinload(Product.store),
+                selectinload(TransactionItem.original_product),
+            ),
             selectinload(Transaction.customer),
             selectinload(Transaction.store),
             selectinload(Transaction.staff)
@@ -24,7 +27,10 @@ class TransactionRepository:
     async def get_multi(self, skip: int = 0, limit: int = 100, start_date: Optional[date] = None, end_date: Optional[date] = None, tx_type: Optional[str] = None):
         # Eager load items and relationships
         query = select(Transaction).options(
-            selectinload(Transaction.items).selectinload(TransactionItem.product).selectinload(Product.store),
+            selectinload(Transaction.items).options(
+                selectinload(TransactionItem.product).selectinload(Product.store),
+                selectinload(TransactionItem.original_product),
+            ),
             selectinload(Transaction.customer),
             selectinload(Transaction.store),
             selectinload(Transaction.staff)
@@ -66,8 +72,10 @@ class TransactionRepository:
     async def get_by_customer(self, customer_id: int, tx_type: str = None):
         """Get transactions by customer ID, optionally filtered by type"""
         query = select(Transaction).options(
-            selectinload(Transaction.items).selectinload(TransactionItem.product).selectinload(Product.store),
-            selectinload(Transaction.items).selectinload(TransactionItem.original_product),
+            selectinload(Transaction.items).options(
+                selectinload(TransactionItem.product).selectinload(Product.store),
+                selectinload(TransactionItem.original_product),
+            ),
             selectinload(Transaction.customer),
             selectinload(Transaction.store),
             selectinload(Transaction.staff)

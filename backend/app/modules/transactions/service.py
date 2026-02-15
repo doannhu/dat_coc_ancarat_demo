@@ -3,16 +3,24 @@ from sqlalchemy import select
 from datetime import date, datetime, timezone
 from app.db.models import Transaction, TransactionItem, TransactionType, ProductStatus, Product
 from .repository import TransactionRepository
-from app.modules.products.repository import ProductRepository
-from app.modules.products import schemas as product_schemas
+from app.modules.products.service import ProductService
 from . import schemas as transaction_schemas
 
 class TransactionService:
-    def __init__(self, repository: TransactionRepository, product_repository: ProductRepository):
+    def __init__(self, repository: TransactionRepository, product_service: ProductService):
         self.repository = repository
-        self.product_repository = product_repository
+        self.product_service = product_service
+        self.product_repository = product_service.repository
 
     async def get_transactions(self, skip: int = 0, limit: int = 100, start_date: Optional[date] = None, end_date: Optional[date] = None, tx_type: Optional[str] = None) -> List[Transaction]:
+        if tx_type:
+            normalized = tx_type.replace("+", " ").strip()
+            if normalized in (TransactionType.SALE.value, "sale", "SALE"):
+                tx_type = TransactionType.SALE.value
+            elif normalized in (t.value for t in TransactionType):
+                tx_type = normalized
+            else:
+                tx_type = normalized
         transactions = await self.repository.get_multi(skip=skip, limit=limit, start_date=start_date, end_date=end_date, tx_type=tx_type)
         
         # Get linked statuses for sale transactions
@@ -79,6 +87,7 @@ class TransactionService:
                     # Create new product - from customer order, not yet ordered from manufacturer
                     prod_in = product_schemas.ProductCreate(
                         product_type=item.product_type,
+                        product_code=await self.product_service.generate_product_code(item.product_type),
                         status=ProductStatus.SOLD,
                         last_price=price,
                         store_id=order_in.store_id,
@@ -167,6 +176,7 @@ class TransactionService:
                 for i in range(qty):
                     prod_in = product_schemas.ProductCreate(
                         product_type=item.product_type,
+                        product_code=await self.product_service.generate_product_code(item.product_type),
                         status=ProductStatus.AVAILABLE,  # Available since ordered from manufacturer
                         last_price=item.manufacturer_price,
                         store_id=order_in.store_id,

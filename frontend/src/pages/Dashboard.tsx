@@ -28,21 +28,21 @@ export function Dashboard() {
 
     const menuItems = [
         {
-            title: 'Orders List',
+            title: 'Danh sách đơn cọc',
             icon: List,
             color: 'bg-purple-100 text-purple-600',
             action: () => navigate('/orders'),
             roles: ['admin', 'staff'],
         },
         {
-            title: 'Buyback',
+            title: 'Mua lại đơn KH',
             icon: Repeat,
             color: 'bg-green-100 text-green-600',
             action: () => navigate('/buyback'),
             roles: ['admin', 'staff'],
         },
         {
-            title: 'Fulfillment',
+            title: 'Giao hàng KH',
             icon: Truck,
             color: 'bg-orange-100 text-orange-600',
             action: () => navigate('/fulfillment'),
@@ -50,28 +50,28 @@ export function Dashboard() {
         },
         // Admin Only
         {
-            title: 'Customer Order',
+            title: 'Đơn cọc KH',
             icon: Users,
             color: 'bg-indigo-100 text-indigo-600',
             action: () => navigate('/orders/new'),
             roles: ['admin', 'staff'],
         },
         {
-            title: 'Manufacturer Order',
+            title: 'Đơn cọc NSX',
             icon: Building2,
             color: 'bg-pink-100 text-pink-600',
             action: () => navigate('/manufacturer-order'),
             roles: ['admin'],
         },
         {
-            title: 'Manufacturer Orders List',
+            title: 'Danh sách đơn NSX',
             icon: ClipboardList,
             color: 'bg-pink-100 text-pink-600',
             action: () => navigate('/manufacturer-orders'),
             roles: ['admin'],
         },
         {
-            title: 'Bán lại NSX',
+            title: 'Bán lại đơn NSX',
             icon: RotateCcw,
             color: 'bg-red-100 text-red-600',
             action: () => navigate('/sell-back'),
@@ -92,24 +92,24 @@ export function Dashboard() {
             roles: ['admin'],
         },
         {
-            title: 'Manage Users',
+            title: 'Quản lý người dùng',
             icon: Users,
             color: 'bg-gray-100 text-gray-600',
-            action: () => console.log('Manage Users'),
+            action: () => navigate('/users'),
             roles: ['admin'],
         },
         {
-            title: 'Store Inventory',
+            title: 'Quản lý kho',
             icon: Store,
             color: 'bg-emerald-100 text-emerald-600',
             action: () => navigate('/stores'),
             roles: ['admin'],
         },
         {
-            title: 'Customers',
+            title: 'Danh sách KH',
             icon: UserCheck,
             color: 'bg-indigo-100 text-indigo-600',
-            action: () => console.log('Manage Customers'),
+            action: () => navigate('/customers'),
             roles: ['admin'],
         },
     ];
@@ -122,8 +122,8 @@ export function Dashboard() {
         <div className="min-h-screen bg-gray-50 p-6">
             <header className="mb-8 flex items-center justify-between">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
-                    <p className="text-gray-500">Welcome back, {user?.name}</p>
+                    <h1 className="text-2xl font-bold text-gray-900">Bảng chức năng</h1>
+                    <p className="text-gray-500">Xin chào, {user?.name}</p>
                 </div>
                 <button
                     onClick={handleLogout}

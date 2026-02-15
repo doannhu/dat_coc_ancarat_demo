@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card'
 import { Input } from '../components/ui/Input';
 import { Button } from '../components/ui/Button';
 import styles from './Orders.module.css';
-import { formatTime, todayHanoi } from '../lib/dateUtils';
+import { formatTime, todayHanoi, startOfMonthHanoi } from '../lib/dateUtils';
 
 // Types (should ideally be shared/generated, but defining here for now)
 interface Product {
@@ -71,7 +71,7 @@ interface TransactionStats {
 export const Orders = () => {
     const [orders, setOrders] = useState<Transaction[]>([]);
     const [stats, setStats] = useState<TransactionStats | null>(null);
-    const [startDate, setStartDate] = useState<string>(todayHanoi());
+    const [startDate, setStartDate] = useState<string>(startOfMonthHanoi());
     const [endDate, setEndDate] = useState<string>(todayHanoi());
     const [loading, setLoading] = useState(false);
 
@@ -91,8 +91,8 @@ export const Orders = () => {
                 })
             ]);
 
-            setOrders(ordersRes.data);
-            setStats(statsRes.data);
+            setOrders(Array.isArray(ordersRes.data) ? ordersRes.data : []);
+            setStats(statsRes.data ?? null);
         } catch (error) {
             console.error("Error fetching orders:", error);
         } finally {

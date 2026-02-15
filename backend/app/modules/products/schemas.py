@@ -6,6 +6,7 @@ from datetime import datetime
 
 class ProductBase(BaseModel):
     product_type: str
+    product_code: Optional[str] = None
     status: ProductStatus = ProductStatus.AVAILABLE
     last_price: Optional[float] = None
     store_id: int

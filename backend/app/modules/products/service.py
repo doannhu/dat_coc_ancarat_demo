@@ -28,6 +28,42 @@ class ProductService:
                 
         return product
 
+    async def generate_product_code(self, product_type: str) -> str:
+        # Format: XX-DD-MM-YYYY-ZZZZZ
+        # XX: 1L (1 lượng), 5L (5 lượng), 1K (1 kg)
+        from datetime import datetime
+        now = datetime.now()
+        date_str = now.strftime("%d-%m-%Y")
+        
+        type_map = {
+            "1 lượng": "1L",
+            "5 lượng": "5L",
+            "1 kg": "1K"
+        }
+        # default to first 2 chars upper if not in map
+        code_prefix = type_map.get(product_type, product_type[:2].upper())
+        
+        prefix = f"{code_prefix}-{date_str}-"
+        
+        # Get last sequence for this prefix
+        stmt = select(Product.product_code).where(
+            Product.product_code.like(f"{prefix}%")
+        ).order_by(Product.product_code.desc()).limit(1)
+        
+        result = await self.repository.db.execute(stmt)
+        last_code = result.scalar_one_or_none()
+        
+        new_seq = 1
+        if last_code:
+            try:
+                parts = last_code.split('-')
+                new_seq = int(parts[-1]) + 1
+            except ValueError:
+                pass
+                
+        return f"{prefix}{new_seq:05d}"
+
+
     ## NOTE: swap_products moved to TransactionService for proper audit tracking
 
     async def get_products(self, skip: int = 0, limit: int = 100) -> List[schemas.Product]:

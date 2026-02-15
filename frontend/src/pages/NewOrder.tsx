@@ -81,10 +81,10 @@ export function NewOrder() {
             setSelectedCustomer(created);
             setSearchCustomer(created.name);
             setIsCreatingCustomer(false);
-            alert("Customer Created");
+            alert("Tạo khách hàng thành công");
         } catch (e) {
             console.error(e);
-            alert("Failed to create customer");
+            alert("Tạo khách hàng thất bại");
         }
     };
 
@@ -97,7 +97,7 @@ export function NewOrder() {
     const addItem = () => {
         if (itemMode === 'new') {
             if (newItemParams.price <= 0) {
-                alert("Price must be > 0");
+                alert("Giá phải lớn hơn 0");
                 return;
             }
             setOrderItems([...orderItems, {
@@ -110,11 +110,11 @@ export function NewOrder() {
         } else {
             // Available product mode
             if (!selectedAvailableProduct) {
-                alert("Please select an available product");
+                alert("Vui lòng chọn sản phẩm có sẵn");
                 return;
             }
             if (newItemParams.price <= 0) {
-                alert("Price must be > 0");
+                alert("Giá phải lớn hơn 0");
                 return;
             }
             setOrderItems([...orderItems, {
@@ -138,11 +138,11 @@ export function NewOrder() {
 
     const handleSubmit = async () => {
         if (!selectedCustomer) {
-            alert("Please select a customer");
+            alert("Vui lòng chọn khách hàng");
             return;
         }
         if (!selectedStore) {
-            alert("Please select a store");
+            alert("Vui lòng chọn cửa hàng");
             return;
         }
 
@@ -157,10 +157,10 @@ export function NewOrder() {
             };
             console.log("Submitting:", payload);
             await axios.post('/api/v1/transactions/order', payload);
-            alert("Order Created Successfully!");
+            alert("Tạo đơn hàng thành công");
             navigate('/dashboard');
         } catch (e) {
-            alert("Error creating order");
+            alert("Tạo đơn hàng thất bại");
             console.error(e);
         }
     };
@@ -233,18 +233,18 @@ export function NewOrder() {
                                         )}
                                     </div>
                                     <Button variant="secondary" onClick={() => setIsCreatingCustomer(true)}>
-                                        + Create New Customer
+                                        + Tạo khách hàng mới
                                     </Button>
                                 </>
                             ) : (
                                 <div className="space-y-3 border p-3 rounded">
-                                    <h4 className="font-semibold">New Customer</h4>
-                                    <Input placeholder="Name" value={newCustomer.name} onChange={e => setNewCustomer({ ...newCustomer, name: e.target.value })} />
-                                    <Input placeholder="Phone" value={newCustomer.phone_number} onChange={e => setNewCustomer({ ...newCustomer, phone_number: e.target.value })} />
+                                    <h4 className="font-semibold">Khách hàng mới</h4>
+                                    <Input placeholder="Tên" value={newCustomer.name} onChange={e => setNewCustomer({ ...newCustomer, name: e.target.value })} />
+                                    <Input placeholder="Số điện thoại" value={newCustomer.phone_number} onChange={e => setNewCustomer({ ...newCustomer, phone_number: e.target.value })} />
                                     <Input placeholder="CCCD" value={newCustomer.cccd} onChange={e => setNewCustomer({ ...newCustomer, cccd: e.target.value })} />
-                                    <Input placeholder="Address" value={newCustomer.address} onChange={e => setNewCustomer({ ...newCustomer, address: e.target.value })} />
+                                    <Input placeholder="Địa chỉ" value={newCustomer.address} onChange={e => setNewCustomer({ ...newCustomer, address: e.target.value })} />
                                     <div className="flex gap-2">
-                                        <Button onClick={createCustomer}>Save</Button>
+                                        <Button onClick={createCustomer}>Lưu</Button>
                                         <Button variant="ghost" onClick={() => setIsCreatingCustomer(false)}>Cancel</Button>
                                     </div>
                                 </div>
@@ -271,7 +271,7 @@ export function NewOrder() {
                                     checked={itemMode === 'new'}
                                     onChange={() => setItemMode('new')}
                                 />
-                                <span>New Product</span>
+                                <span>Sản phẩm mới</span>
                             </label>
                             <label className="flex items-center gap-2 cursor-pointer">
                                 <input
@@ -280,7 +280,7 @@ export function NewOrder() {
                                     checked={itemMode === 'available'}
                                     onChange={() => setItemMode('available')}
                                 />
-                                <span>Available Product</span>
+                                <span>Sản phẩm có sẵn trong kho</span>
                             </label>
                         </div>
 
@@ -288,7 +288,7 @@ export function NewOrder() {
                             {itemMode === 'new' ? (
                                 <>
                                     <div className="w-1/3 min-w-[150px]">
-                                        <label className="block text-sm font-medium mb-1">Type</label>
+                                        <label className="block text-sm font-medium mb-1">Loại</label>
                                         <select
                                             className="w-full rounded-md border border-gray-300 p-2"
                                             value={newItemType}
@@ -300,7 +300,7 @@ export function NewOrder() {
                                         </select>
                                     </div>
                                     <div className="w-20">
-                                        <label className="block text-sm font-medium mb-1">Qty</label>
+                                        <label className="block text-sm font-medium mb-1">Số lượng</label>
                                         <Input
                                             type="number"
                                             value={newItemParams.quantity}
@@ -321,7 +321,7 @@ export function NewOrder() {
                                             if (p) setNewItemParams({ ...newItemParams, price: p.last_price || 0 });
                                         }}
                                     >
-                                        <option value="">-- Select Product --</option>
+                                        <option value="">-- Chọn sản phẩm --</option>
                                         {availableProducts.map(p => (
                                             <option key={p.id} value={p.id}>
                                                 #{p.id} {p.product_type} - {p.store_name || 'N/A'} - {p.last_price?.toLocaleString()} VND
@@ -330,15 +330,15 @@ export function NewOrder() {
                                     </select>
                                     {selectedAvailableProduct && (
                                         <div className="mt-2 text-sm text-blue-600">
-                                            Selected: #{selectedAvailableProduct.id} {selectedAvailableProduct.product_type}
-                                            | Store: {selectedAvailableProduct.store_name}
-                                            | Last Price: {selectedAvailableProduct.last_price?.toLocaleString()} VND
+                                            Đã chọn: #{selectedAvailableProduct.id} {selectedAvailableProduct.product_type}
+                                            | Cửa hàng: {selectedAvailableProduct.store_name}
+                                            | Giá cuối: {selectedAvailableProduct.last_price?.toLocaleString()} VND
                                         </div>
                                     )}
                                 </div>
                             )}
                             <div className="w-1/3 min-w-[150px]">
-                                <label className="block text-sm font-medium mb-1">Price (VND)</label>
+                                <label className="block text-sm font-medium mb-1">Giá (VND)</label>
                                 <Input
                                     type="number"
                                     value={newItemParams.price}
@@ -354,10 +354,10 @@ export function NewOrder() {
                                     <thead className="bg-gray-100">
                                         <tr>
                                             <th className="p-2 text-left">ID</th>
-                                            <th className="p-2 text-left">Type</th>
-                                            <th className="p-2 text-right">Qty</th>
-                                            <th className="p-2 text-right">Price</th>
-                                            <th className="p-2 text-right">Total</th>
+                                            <th className="p-2 text-left">Loại</th>
+                                            <th className="p-2 text-right">Số lượng</th>
+                                            <th className="p-2 text-right">Giá</th>
+                                            <th className="p-2 text-right">Tổng</th>
                                             <th className="p-2"></th>
                                         </tr>
                                     </thead>
@@ -394,7 +394,7 @@ export function NewOrder() {
                     <CardContent className="p-6">
                         <div className="flex justify-between items-center mb-6">
                             <div>
-                                <label className="block text-sm font-medium mb-2">Payment Method</label>
+                                <label className="block text-sm font-medium mb-2">Phương thức thanh toán</label>
                                 <div className="flex gap-4">
                                     <label className="flex items-center gap-2 cursor-pointer">
                                         <input
@@ -403,7 +403,7 @@ export function NewOrder() {
                                             checked={paymentMethod === 'cash'}
                                             onChange={() => setPaymentMethod('cash')}
                                         />
-                                        <span>Cash</span>
+                                        <span>Tiền mặt</span>
                                     </label>
                                     <label className="flex items-center gap-2 cursor-pointer">
                                         <input
@@ -412,18 +412,18 @@ export function NewOrder() {
                                             checked={paymentMethod === 'bank_transfer'}
                                             onChange={() => setPaymentMethod('bank_transfer')}
                                         />
-                                        <span>Bank Transfer</span>
+                                        <span>Chuyển khoản</span>
                                     </label>
                                 </div>
                             </div>
                             <div className="text-right">
-                                <p className="text-sm text-gray-500">Total Amount</p>
+                                <p className="text-sm text-gray-500">Tổng tiền</p>
                                 <p className="text-3xl font-bold text-blue-600">{totalAmount.toLocaleString()} VND</p>
                             </div>
                         </div>
 
                         <Button className="w-full text-lg py-6" onClick={handleSubmit} disabled={orderItems.length === 0 || !selectedCustomer}>
-                            Create Order
+                            Tạo đơn hàng
                         </Button>
                     </CardContent>
                 </Card>

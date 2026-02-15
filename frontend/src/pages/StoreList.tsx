@@ -8,6 +8,7 @@ import { ArrowLeft, ArrowRight, Store as StoreIcon } from 'lucide-react';
 // Types
 interface Product {
     id: number;
+    product_code?: string;
     product_type: string;
     status: string;
     last_price: number;
@@ -213,7 +214,10 @@ export function StoreList() {
                                                 <tbody>
                                                     {store.products.map(product => (
                                                         <tr key={product.id} className="border-b hover:bg-gray-50">
-                                                            <td className="px-3 py-2">#{product.id}</td>
+                                                            <td className="px-3 py-2">
+                                                                <div>#{product.id}</div>
+                                                                <div className="text-xs text-gray-500 font-mono">{product.product_code || '-'}</div>
+                                                            </td>
                                                             <td className="px-3 py-2">{product.product_type}</td>
                                                             <td className="px-3 py-2 text-right font-medium">
                                                                 {formatCurrency(product.last_price || 0)}
@@ -228,7 +232,7 @@ export function StoreList() {
                                                                     })}
                                                                     className="text-blue-600 hover:text-blue-800"
                                                                 >
-                                                                    Di chuyển
+                                                                    Chuyển kho
                                                                 </Button>
                                                             </td>
                                                         </tr>

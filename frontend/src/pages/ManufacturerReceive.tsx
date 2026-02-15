@@ -10,6 +10,7 @@ import { formatDate, formatTime, todayHanoi, nowHanoiLocal, hanoiToISO } from '.
 // Types
 interface Product {
     id: number;
+    product_code?: string;
     product_type: string;
     status: string;
     last_price: number;
@@ -47,6 +48,7 @@ interface Transaction {
 
 interface ReceiveItem {
     product_id: number;
+    product_code?: string;
     product_type: string;
     price: number;
     selected: boolean;
@@ -108,14 +110,15 @@ export function ManufacturerReceive() {
 
     const selectOrder = (order: Transaction) => {
         setSelectedOrder(order);
-        // Only include items not yet received and not sold back to manufacturer
+        // Only include items not yet received, not sold back, and not fulfilled
         const items: ReceiveItem[] = order.items
             .filter(item => {
                 const status = item.product?.status ?? '';
-                return status !== 'Đã nhận hàng NSX' && status !== 'Đã bán lại NSX';
+                return status !== 'Đã nhận hàng NSX' && status !== 'Đã bán lại NSX' && status !== 'Đã giao';
             })
             .map(item => ({
                 product_id: item.product_id,
+                product_code: item.product.product_code,
                 product_type: item.product.product_type,
                 price: item.price_at_time,
                 selected: true,
@@ -260,8 +263,8 @@ export function ManufacturerReceive() {
                                                             )}
                                                         </div>
                                                         <div className="text-sm text-gray-500">
-                                                    {formatDate(order.created_at)}{' '}
-                                                    {formatTime(order.created_at)}
+                                                            {formatDate(order.created_at)}{' '}
+                                                            {formatTime(order.created_at)}
                                                         </div>
                                                         <div className="text-sm text-gray-500">
                                                             {order.store?.name || '-'} • {order.staff?.staff_name || '-'}
@@ -287,7 +290,9 @@ export function ManufacturerReceive() {
                                                                     : 'bg-gray-100 text-gray-700'}
                                                             `}
                                                         >
-                                                            #{item.product_id} {item.product.product_type}
+                                                            #{item.product_id}
+                                                            {item.product.product_code && <span className="font-mono ml-1 text-[10px] text-gray-500">({item.product.product_code})</span>}
+                                                            {' '}{item.product.product_type}
                                                             {item.product.status === 'Đã nhận hàng NSX' && ' ✓'}
                                                         </span>
                                                     ))}
@@ -384,7 +389,10 @@ export function ManufacturerReceive() {
                                                                         {item.selected && <Check className="h-4 w-4" />}
                                                                     </button>
                                                                 </td>
-                                                                <td className="px-3 py-2">#{item.product_id}</td>
+                                                                <td className="px-3 py-2">
+                                                                    <div>#{item.product_id}</div>
+                                                                    <div className="text-xs text-gray-500 font-mono">{item.product_code || '-'}</div>
+                                                                </td>
                                                                 <td className="px-3 py-2">{item.product_type}</td>
                                                                 <td className="px-3 py-2 text-gray-700">
                                                                     {item.customer_name || '—'}

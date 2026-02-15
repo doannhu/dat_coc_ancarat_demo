@@ -125,11 +125,11 @@ export function Buyback() {
 
     const handleSubmit = async () => {
         if (!selectedTransaction) {
-            alert("Please select a transaction");
+            alert("Vui lòng chọn đơn hàng");
             return;
         }
         if (buybackItems.length === 0) {
-            alert("Please add at least one item to buyback");
+            alert("Vui lòng chọn ít nhất một sản phẩm để mua lại");
             return;
         }
 
@@ -147,11 +147,11 @@ export function Buyback() {
             };
 
             await axios.post('/api/v1/transactions/buyback', payload);
-            alert("Buyback completed successfully!");
+            alert("Mua lại thành công!");
             navigate('/dashboard');
         } catch (e: unknown) {
             const error = e as { response?: { data?: { detail?: string } } };
-            alert(`Error: ${error.response?.data?.detail || 'Failed to process buyback'}`);
+            alert(`Lỗi: ${error.response?.data?.detail || 'Mua lại thất bại'}`);
             console.error(e);
         }
     };
@@ -212,7 +212,7 @@ export function Buyback() {
                                     </div>
                                 ))}
                                 {filteredCustomers.length === 0 && (
-                                    <div className="p-3 text-gray-500">No customers found</div>
+                                    <div className="p-3 text-gray-500">Không tìm thấy khách hàng</div>
                                 )}
                             </div>
                         )}
@@ -234,7 +234,7 @@ export function Buyback() {
                         <CardHeader><CardTitle>Đơn hàng</CardTitle></CardHeader>
                         <CardContent>
                             {customerTransactions.length === 0 ? (
-                                <p className="text-gray-500">No orders found for this customer</p>
+                                <p className="text-gray-500">Không tìm thấy đơn hàng</p>
                             ) : (
                                 <div className="space-y-2">
                                     {customerTransactions.map(tx => {
@@ -328,7 +328,7 @@ export function Buyback() {
                             </div>
 
                             {buybackItems.length === 0 ? (
-                                <p className="text-gray-500">No items available for buyback (all items may have been bought back already)</p>
+                                <p className="text-gray-500">Không có sản phẩm nào để mua lại</p>
                             ) : (
                                 <div className="border rounded-lg overflow-hidden">
                                     <table className="w-full text-sm">

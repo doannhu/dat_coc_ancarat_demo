@@ -12,6 +12,8 @@ import { ManufacturerReceive } from './pages/ManufacturerReceive';
 import { Orders } from './pages/Orders';
 import { SwapProducts } from './pages/SwapProducts';
 import { StoreList } from './pages/StoreList';
+import { Customers } from './pages/Customers';
+import { UsersPage } from './pages/Users';
 import { type ReactNode } from 'react';
 
 function PrivateRoute({ children }: { children: ReactNode }) {
@@ -110,6 +112,22 @@ function App() {
             element={
               <PrivateRoute>
                 <StoreList />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/customers"
+            element={
+              <PrivateRoute>
+                <Customers />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/users"
+            element={
+              <PrivateRoute>
+                <UsersPage />
               </PrivateRoute>
             }
           />

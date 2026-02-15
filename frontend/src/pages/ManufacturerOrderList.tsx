@@ -10,6 +10,7 @@ import { formatDate, formatTime, todayHanoi } from '../lib/dateUtils';
 // Types
 interface Product {
     id: number;
+    product_code?: string;
     product_type: string;
     status: string;
     last_price: number;
@@ -252,16 +253,16 @@ export function ManufacturerOrderList() {
                     <CardHeader>
                         <div className="flex justify-between items-center">
                             <CardTitle>Đơn hàng NSX ({orders.length})</CardTitle>
-                            <div className="flex items-center gap-2 text-sm text-gray-500">
+                            {/* <div className="flex items-center gap-2 text-sm text-gray-500">
                                 <span>Toggle delivery status for each product</span>
-                            </div>
+                            </div> */}
                         </div>
                     </CardHeader>
                     <CardContent>
                         {loading ? (
-                            <div className="text-center py-4">Loading...</div>
+                            <div className="text-center py-4">Đang tải...</div>
                         ) : orders.length === 0 ? (
-                            <div className="text-center py-4 text-gray-500">No manufacturer orders for this date range.</div>
+                            <div className="text-center py-4 text-gray-500">Không có đơn hàng NSX trong khoảng thời gian này.</div>
                         ) : (
                             <div className="space-y-4">
                                 {orders.map((order) => (
@@ -298,12 +299,12 @@ export function ManufacturerOrderList() {
                                                     <th className="px-3 py-2 text-left">Loại</th>
                                                     <th className="px-3 py-2 text-right">Giá</th>
                                                     <th className="px-3 py-2 text-center">Trạng thái</th>
-                                                    <th className="px-3 py-2 text-center">Đã nhận hàng NSX</th>
+                                                    {/* <th className="px-3 py-2 text-center">Đã nhận hàng NSX</th> */}
                                                 </tr>
                                             </thead>
                                             <tbody>
                                                 {order.items.map((item) => {
-                                                    const isDelivered = getDeliveryStatus(item.product);
+                                                    // const isDelivered = getDeliveryStatus(item.product);
                                                     const hasChange = deliveryChanges.has(item.product.id);
 
                                                     return (
@@ -311,7 +312,10 @@ export function ManufacturerOrderList() {
                                                             key={item.id}
                                                             className={`border-b ${hasChange ? 'bg-yellow-50' : ''}`}
                                                         >
-                                                            <td className="px-3 py-2">#{item.product.id}</td>
+                                                            <td className="px-3 py-2">
+                                                                <div>#{item.product.id}</div>
+                                                                <div className="text-xs text-gray-500 font-mono">{item.product.product_code || '-'}</div>
+                                                            </td>
                                                             <td className="px-3 py-2">{item.product.product_type}</td>
                                                             <td className="px-3 py-2 text-right">{formatCurrency(item.price_at_time)}</td>
                                                             <td className="px-3 py-2 text-center">
@@ -319,15 +323,13 @@ export function ManufacturerOrderList() {
                                                                     <span className="inline-block bg-red-100 text-red-700 px-2 py-0.5 rounded text-xs font-medium">
                                                                         Đã bán lại NSX
                                                                     </span>
-                                                                ) : item.product.status === 'Đã nhận hàng NSX' ? (
-                                                                    <span className="inline-block bg-green-100 text-green-700 px-2 py-0.5 rounded text-xs font-medium">
-                                                                        Đã nhận hàng NSX
-                                                                    </span>
                                                                 ) : (
-                                                                    <span className="text-gray-400 text-xs">-</span>
+                                                                    <span className="inline-block bg-green-100 text-green-700 px-2 py-0.5 rounded text-xs font-medium">
+                                                                        {item.product.status}
+                                                                    </span>
                                                                 )}
                                                             </td>
-                                                            <td className="px-3 py-2">
+                                                            {/* <td className="px-3 py-2">
                                                                 <div className="flex items-center justify-center gap-2">
                                                                     <IOSSwitch
                                                                         checked={isDelivered}
@@ -337,7 +339,7 @@ export function ManufacturerOrderList() {
                                                                         {isDelivered ? 'Yes' : 'No'}
                                                                     </span>
                                                                 </div>
-                                                            </td>
+                                                            </td> */}
                                                         </tr>
                                                     );
                                                 })}
@@ -388,7 +390,10 @@ export function ManufacturerOrderList() {
                                     <tbody>
                                         {pendingProducts.map((product) => (
                                             <tr key={product.id} className="border-b hover:bg-orange-50">
-                                                <td className="px-4 py-3">#{product.id}</td>
+                                                <td className="px-4 py-3">
+                                                    <div>#{product.id}</div>
+                                                    <div className="text-xs text-gray-500 font-mono">{product.product_code || '-'}</div>
+                                                </td>
                                                 <td className="px-4 py-3">{product.product_type}</td>
                                                 <td className="px-4 py-3 font-medium">{product.customer_name || '-'}</td>
                                                 <td className="px-4 py-3">
@@ -417,6 +422,6 @@ export function ManufacturerOrderList() {
                     </CardContent>
                 </Card>
             </div>
-        </div>
+        </div >
     );
 }

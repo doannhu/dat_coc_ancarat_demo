@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.session import get_db
 from app.modules.products.repository import ProductRepository
+from app.modules.products.service import ProductService
 from . import schemas as transaction_schema
 from .service import TransactionService
 from .repository import TransactionRepository
@@ -14,7 +15,8 @@ router = APIRouter()
 def get_service(db: AsyncSession = Depends(get_db)) -> TransactionService:
     repository = TransactionRepository(db)
     product_repository = ProductRepository(db)
-    return TransactionService(repository, product_repository)
+    product_service = ProductService(product_repository)
+    return TransactionService(repository, product_service)
 
 @router.get("/stats", response_model=transaction_schema.TransactionStats)
 async def get_transaction_stats(

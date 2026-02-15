@@ -63,6 +63,7 @@ class Product(Base):
     __tablename__ = "products"
     id = Column(Integer, primary_key=True)
     product_type = Column(String) # e.g., ProductType.LUONG_5
+    product_code = Column(String, unique=True, nullable=True) # generated code like 1L-15-02-2026-00001
     status = Column(String, default=ProductStatus.AVAILABLE)
     last_price = Column(Float)
     store_id = Column(Integer, ForeignKey("stores.id"))

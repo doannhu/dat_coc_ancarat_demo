@@ -10,6 +10,7 @@ import { formatDate, formatTime, formatDateTime, todayHanoi, nowHanoiLocal, hano
 // Types
 interface Product {
     id: number;
+    product_code?: string;
     product_type: string;
     status: string;
     last_price: number;
@@ -46,6 +47,7 @@ interface Transaction {
 
 interface SellBackItem {
     product_id: number;
+    product_code?: string;
     product_type: string;
     sell_back_price: number;
     selected: boolean;
@@ -136,11 +138,15 @@ export function SellBack() {
     const selectOrder = (order: Transaction) => {
         setSelectedOrder(order);
         // Pre-populate sell-back items from order items
-        // Only include items where product is NOT already sold back (to manufacturer)
+        // Only include items where product is NOT already sold back (to manufacturer) and NOT fulfilled
         const items: SellBackItem[] = order.items
-            .filter(item => item.product.status !== 'Đã bán lại NSX')
+            .filter(item => {
+                const status = item.product?.status ?? '';
+                return status !== 'Đã bán lại NSX' && status !== 'Đã giao';
+            })
             .map(item => ({
                 product_id: item.product_id,
+                product_code: item.product.product_code,
                 product_type: item.product.product_type,
                 sell_back_price: item.price_at_time,
                 selected: true
@@ -326,7 +332,9 @@ export function SellBack() {
                                                                     : 'bg-gray-100 text-gray-700'}
                                                             `}
                                                         >
-                                                            #{item.product_id} {item.product.product_type}
+                                                            #{item.product_id}
+                                                            {item.product.product_code && <span className="font-mono ml-1 text-[10px] text-gray-500">({item.product.product_code})</span>}
+                                                            {' '}{item.product.product_type}
                                                             {item.product.status === 'Đã bán lại NSX' && ' ✓'}
                                                         </span>
                                                     ))}
@@ -390,7 +398,7 @@ export function SellBack() {
                                 {/* Products to sell back */}
                                 <Card>
                                     <CardHeader>
-                                        <CardTitle>Sản phẩm bán lại ({selectedItems.length}/{sellBackItems.length})</CardTitle>
+                                        <CardTitle>Sản phẩm bán lại cho NSX ({selectedItems.length}/{sellBackItems.length})</CardTitle>
                                     </CardHeader>
                                     <CardContent>
                                         {sellBackItems.length === 0 ? (
@@ -431,7 +439,10 @@ export function SellBack() {
                                                                             {item.selected && <Check className="h-4 w-4" />}
                                                                         </button>
                                                                     </td>
-                                                                    <td className="px-3 py-2">#{item.product_id}</td>
+                                                                    <td className="px-3 py-2">
+                                                                        <div>#{item.product_id}</div>
+                                                                        <div className="text-xs text-gray-500 font-mono">{item.product_code || '-'}</div>
+                                                                    </td>
                                                                     <td className="px-3 py-2 text-center">
                                                                         {isSoldToCustomer && (
                                                                             <Button

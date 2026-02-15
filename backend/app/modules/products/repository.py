@@ -59,6 +59,7 @@ class ProductRepository:
     async def create(self, obj_in: product_schema.ProductCreate):
         db_obj = Product(
             product_type=obj_in.product_type,
+            product_code=obj_in.product_code,
             status=obj_in.status,
             last_price=obj_in.last_price,
             store_id=obj_in.store_id,
