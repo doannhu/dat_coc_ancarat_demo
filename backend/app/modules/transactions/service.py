@@ -4,6 +4,7 @@ from datetime import date, datetime, timezone
 from app.db.models import Transaction, TransactionItem, TransactionType, ProductStatus, Product
 from .repository import TransactionRepository
 from app.modules.products.service import ProductService
+from app.modules.products import schemas as product_schemas
 from . import schemas as transaction_schemas
 
 class TransactionService:
@@ -40,15 +41,21 @@ class TransactionService:
                     product_ids.append(item.product_id)
         if product_ids:
             customer_names = await self.repository.get_product_customer_names(product_ids)
+            received_dates = await self.repository.get_product_received_dates(product_ids)
             for t in transactions:
                 for item in t.items:
                     if item.product and item.product_id in customer_names:
                         setattr(item.product, "customer_name", customer_names[item.product_id])
+                    if item.product and item.product_id in received_dates:
+                        setattr(item.product, "received_date", received_dates[item.product_id])
         
         return transactions
 
     async def get_stats(self, start_date: Optional[date] = None, end_date: Optional[date] = None) -> transaction_schemas.TransactionStats:
         return await self.repository.get_stats(start_date=start_date, end_date=end_date)
+
+    async def get_financial_stats(self, start_date: date, end_date: date):
+        return await self.repository.get_financial_stats(start_date=start_date, end_date=end_date)
 
     async def get_transaction(self, transaction_id: int) -> Optional[Transaction]:
         return await self.repository.get(id=transaction_id)
@@ -63,6 +70,21 @@ class TransactionService:
              # Convert to naive local time if aware
              tx_created = tx_created.astimezone(None).replace(tzinfo=None)
 
+        # Calculate total amount to determine split if not explicit
+        total_amount = sum(item.quantity * item.price for item in order_in.items)
+        
+        cash_amount = 0.0
+        bank_transfer_amount = 0.0
+        
+        if order_in.payment_method == "mixed":
+            cash_amount = order_in.cash_amount or 0.0
+            bank_transfer_amount = order_in.bank_transfer_amount or 0.0
+            # Optional: validate total matches cash + bank?
+        elif order_in.payment_method == "cash":
+            cash_amount = total_amount
+        elif order_in.payment_method == "bank_transfer":
+            bank_transfer_amount = total_amount
+
         transaction = Transaction(
             type=TransactionType.SALE,
             staff_id=order_in.staff_id,
@@ -70,6 +92,8 @@ class TransactionService:
             store_id=order_in.store_id,
             created_at=tx_created,
             payment_method=order_in.payment_method,
+            cash_amount=cash_amount,
+            bank_transfer_amount=bank_transfer_amount,
             transaction_code=await self._generate_transaction_code(tx_created)
         )
         
@@ -158,8 +182,12 @@ class TransactionService:
                 if not product:
                     raise ValueError(f"Product ID {item.product_id} not found")
                 
-                # Update is_ordered to True for existing product
-                update_schema = product_schemas.ProductUpdate(is_ordered=True)
+                # Update is_ordered to True and status to ORDERED for existing product
+                update_data = {
+                    "is_ordered": True,
+                    "status": ProductStatus.ORDERED
+                }
+                update_schema = product_schemas.ProductUpdate(**update_data)
                 await self.product_repository.update(db_obj=product, obj_in=update_schema)
                 
                 # Assume 1 existing product per item entry (quantity=1 for existing product)
@@ -177,7 +205,7 @@ class TransactionService:
                     prod_in = product_schemas.ProductCreate(
                         product_type=item.product_type,
                         product_code=await self.product_service.generate_product_code(item.product_type),
-                        status=ProductStatus.AVAILABLE,  # Available since ordered from manufacturer
+                        status=ProductStatus.AVAILABLE,  # Default new items to 'Có sẵn'
                         last_price=item.manufacturer_price,
                         store_id=order_in.store_id,
                         is_ordered=True  # Ordered from manufacturer
@@ -581,3 +609,48 @@ class TransactionService:
                 pass
                 
         return f"{prefix}{new_seq:05d}"
+                
+
+    async def update_order(self, id: int, obj_in: transaction_schemas.OrderUpdate) -> Transaction:
+        transaction = await self.repository.get(id=id)
+        if not transaction:
+             raise ValueError("Transaction not found")
+        
+        update_data = obj_in.model_dump(exclude_unset=True)
+        if "created_at" in update_data and update_data["created_at"]:
+             # Handle timezone
+             tx_created = update_data["created_at"]
+             if tx_created.tzinfo is not None:
+                  update_data["created_at"] = tx_created.astimezone(None).replace(tzinfo=None)
+
+        # Update transaction primitive fields
+        for field in update_data:
+             if hasattr(transaction, field):
+                  setattr(transaction, field, update_data[field])
+
+        await self.repository.commit()
+        await self.repository.refresh(transaction)
+        return transaction
+    
+    async def update_manufacturer_order(self, id: int, obj_in: transaction_schemas.ManufacturerOrderUpdate) -> Transaction:
+        transaction = await self.repository.get(id=id)
+        if not transaction:
+             raise ValueError("Transaction not found")
+        
+        if transaction.type != TransactionType.MANUFACTURER:
+             raise ValueError("Not a manufacturer order")
+
+        update_data = obj_in.model_dump(exclude_unset=True)
+        if "created_at" in update_data and update_data["created_at"]:
+             # Handle timezone
+             tx_created = update_data["created_at"]
+             if tx_created.tzinfo is not None:
+                  update_data["created_at"] = tx_created.astimezone(None).replace(tzinfo=None)
+
+        for field in update_data:
+             if hasattr(transaction, field):
+                  setattr(transaction, field, update_data[field])
+        
+        await self.repository.commit()
+        await self.repository.refresh(transaction)
+        return transaction

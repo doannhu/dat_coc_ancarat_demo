@@ -101,6 +101,8 @@ class Transaction(Base):
     linked_to = relationship("Transaction", remote_side=[id])
 
     payment_method = Column(String, nullable=True)
+    cash_amount = Column(Float, default=0.0)
+    bank_transfer_amount = Column(Float, default=0.0)
     code = Column(String, nullable=True) # Manufacturer manual code
     transaction_code = Column(String, nullable=True, unique=True) # Auto-generated system code
     

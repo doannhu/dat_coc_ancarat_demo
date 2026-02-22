@@ -155,6 +155,34 @@ class TransactionRepository:
         result = await self.db.execute(query)
         return {row.product_id: (row.name or "") for row in result.all()}
 
+    async def get_product_received_dates(self, product_ids: List[int]) -> Dict[int, datetime]:
+        """For each product_id, get the created_at from the latest MANUFACTURER_RECEIVED transaction that has this product."""
+        if not product_ids:
+            return {}
+        subq = (
+            select(
+                TransactionItem.product_id,
+                Transaction.created_at,
+                func.row_number().over(
+                    partition_by=TransactionItem.product_id,
+                    order_by=Transaction.created_at.desc()
+                ).label("rn"),
+            )
+            .select_from(TransactionItem)
+            .join(Transaction, Transaction.id == TransactionItem.transaction_id)
+            .where(
+                TransactionItem.product_id.in_(product_ids),
+                Transaction.type == TransactionType.MANUFACTURER_RECEIVED,
+            )
+        )
+        subq = subq.subquery()
+        query = (
+            select(subq.c.product_id, subq.c.created_at)
+            .where(subq.c.rn == 1)
+        )
+        result = await self.db.execute(query)
+        return {row.product_id: row.created_at for row in result.all()}
+
     async def get_stats(self, start_date: Optional[date] = None, end_date: Optional[date] = None):
         # Base query for Sales
         base_query = select(Transaction).where(Transaction.type == TransactionType.SALE)
@@ -218,4 +246,43 @@ class TransactionRepository:
             "total_revenue": total_revenue,
             "payment_method_stats": payment_method_stats,
             "store_stats": store_stats
+        }
+
+    async def get_financial_stats(self, start_date: date, end_date: date):
+        # Money In: SALE + SELL_BACK_MFR
+        async def get_sum(tx_types, payment_method=None):
+            query = select(func.sum(TransactionItem.price_at_time))\
+                .join(Transaction, TransactionItem.transaction_id == Transaction.id)\
+                .where(Transaction.type.in_(tx_types))\
+                .where(cast(Transaction.created_at, Date) >= start_date)\
+                .where(cast(Transaction.created_at, Date) <= end_date)
+            
+            if payment_method:
+                 query = query.where(Transaction.payment_method == payment_method)
+                 
+            return (await self.db.execute(query)).scalar() or 0.0
+
+        sale_total = await get_sum([TransactionType.SALE])
+        sell_back_mfr_total = await get_sum([TransactionType.SELL_BACK_MFR])
+        
+        cash_in = await get_sum([TransactionType.SALE, TransactionType.SELL_BACK_MFR], "cash")
+        bank_in = await get_sum([TransactionType.SALE, TransactionType.SELL_BACK_MFR], "bank_transfer")
+        
+        # Money Out: BUYBACK + MANUFACTURER
+        buyback_total = await get_sum([TransactionType.BUYBACK])
+        manufacturer_order_total = await get_sum([TransactionType.MANUFACTURER])
+        
+        return {
+            "money_in": sale_total + sell_back_mfr_total,
+            "money_in_breakdown": {
+                "customer_order": sale_total,
+                "sell_to_mfr": sell_back_mfr_total,
+                "cash": cash_in,
+                "bank_transfer": bank_in
+            },
+            "money_out": buyback_total + manufacturer_order_total,
+            "money_out_breakdown": {
+                "buy_back_customer": buyback_total,
+                "order_from_mfr": manufacturer_order_total
+            }
         }

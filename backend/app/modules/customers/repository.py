@@ -10,8 +10,19 @@ class CustomerRepository:
     async def get(self, id: int):
         return await self.db.get(Customer, id)
 
-    async def get_multi(self, skip: int = 0, limit: int = 100):
-        result = await self.db.execute(select(Customer).offset(skip).limit(limit))
+    async def get_multi(self, skip: int = 0, limit: int = 100, search: str = None):
+        query = select(Customer)
+        if search:
+            from sqlalchemy import or_
+            search_pattern = f"%{search}%"
+            query = query.where(
+                or_(
+                    Customer.name.ilike(search_pattern),
+                    Customer.phone_number.ilike(search_pattern),
+                    Customer.cccd.ilike(search_pattern)
+                )
+            )
+        result = await self.db.execute(query.offset(skip).limit(limit))
         return result.scalars().all()
 
     async def create(self, obj_in: customer_schema.CustomerCreate):

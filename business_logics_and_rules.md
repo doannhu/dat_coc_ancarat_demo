@@ -56,15 +56,36 @@ Business Rules:
 - KH đặt cọc ->  KH bán lại cho cửa hàng -> Cửa hàng đưa vào kho -> Cửa hàng bán lại cho khách hàng khác -> Nhà sản xuất giao hàng -> Cửa hàng nhận hàng -> Khách hàng nhận hàng
 
 
-- Nhận hàng từ nhà sản xuất: 
-    - Hàng chưa được giao (khách đã nhận hàng), 
-    - Hàng chưa được nhận từ nhà sản xuất, 
-    - Hàng chưa bán lại cho nhà sản xuất
-- Bán lại đơn cho nhà sản xuất: 
-    - Hàng chưa được giao (khách đã nhận hàng), 
-    - Hàng chưa được bán lại cho nhà sản xuất và 
-    - Hàng chưa nhận được từ nhà sản xuất
-- Trả hàng cho khách hàng: 
-    - Hàng chưa được giao (khách đã nhận hàng), 
-    - Hàng chưa được bán lại cho nhà sản xuất và 
-    - Hàng đã nhận được từ nhà sản xuất
+- Nhận hàng từ nhà sản xuất: only ORDERED = "Đã đặt hàng" or SOLD = "Đã bán" and is_order=True or AVAILABLE = "Có sẵn" and is_order=True (case hàng đặt dư)
+    Not other status:   
+    - FULFILLED = "Đã giao"  
+    - SOLD_BACK_MFR = "Đã bán lại NSX"  
+    - RECEIVED_FROM_MFR = "Đã nhận hàng NSX"  
+- Bán lại đơn cho nhà sản xuất: only AVAILABLE = "Có sẵn"
+    Not other status: 
+    - SOLD = "Đã bán"
+    - ORDERED = "Đã đặt hàng"
+    - FULFILLED = "Đã giao"  
+    - SOLD_BACK_MFR = "Đã bán lại NSX"  
+    - RECEIVED_FROM_MFR = "Đã nhận hàng NSX"  
+- Trả hàng/Giao hàng cho khách hàng: only status RECEIVED_FROM_MFR = "Đã nhận hàng NSX" 
+    Not other status: 
+    - AVAILABLE = "Có sẵn"
+    - SOLD = "Đã bán"
+    - ORDERED = "Đã đặt hàng"
+    - FULFILLED = "Đã giao"  
+    - SOLD_BACK_MFR = "Đã bán lại NSX"  
+- Mua lại hàng của khách hàng: only status SOLD = "Đã bán" or ORDERED = "Đã đặt hàng"
+    Not other status: 
+    - AVAILABLE = "Có sẵn"
+    - FULFILLED = "Đã giao"  
+    - SOLD_BACK_MFR = "Đã bán lại NSX"  
+    - RECEIVED_FROM_MFR = "Đã nhận hàng NSX"  
+
+- Đơn cọc NSX: only status SOLD = "Đã bán"
+    Not other status: 
+    - AVAILABLE = "Có sẵn"
+    - ORDERED = "Đã đặt hàng"
+    - FULFILLED = "Đã giao"  
+    - SOLD_BACK_MFR = "Đã bán lại NSX"  
+    - RECEIVED_FROM_MFR = "Đã nhận hàng NSX"  

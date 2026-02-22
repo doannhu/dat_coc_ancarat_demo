@@ -4,14 +4,14 @@ import axios from 'axios';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
-import { Trash, Search, ArrowLeft } from 'lucide-react';
+import { Trash, Search, ArrowLeft, Repeat } from 'lucide-react';
 import { formatDate, formatTime, nowHanoiLocal, hanoiToISO } from '../lib/dateUtils';
 
 // Types
 interface Store { id: number; name: string; }
 interface Customer { id: number; name: string; phone_number: string; cccd: string; }
 interface Staff { id: number; staff_name: string; }
-interface Product { id: number; product_type: string; status: string; last_price: number; }
+interface Product { id: number; product_type: string; status: string; last_price: number; product_code?: string; }
 interface TransactionItem { id: number; product_id: number; price_at_time: number; product: Product; }
 interface Transaction {
     id: number;
@@ -22,14 +22,29 @@ interface Transaction {
     staff: Staff;
     items: TransactionItem[];
     order_status?: string;
+    transaction_code?: string;
 }
 
 interface BuybackItem {
     product_id: number;
+    product_code?: string;
     product_type: string;
     original_price: number;
     buyback_price: number;
 }
+
+const getProductBadgeClass = (status: string) => {
+    switch (status) {
+        case 'Đã bán': return 'bg-blue-100 text-blue-800';
+        case 'Có sẵn': return 'bg-green-100 text-green-800';
+        case 'Đã đặt hàng': return 'bg-purple-100 text-purple-800';
+        case 'Đã giao': return 'bg-teal-100 text-teal-800';
+        case 'Đã bán lại NSX': return 'bg-red-100 text-red-800';
+        case 'Đã nhận hàng NSX': return 'bg-orange-100 text-orange-800';
+        case 'Mua lại': return 'bg-indigo-100 text-indigo-800';
+        default: return 'bg-gray-100 text-gray-600';
+    }
+};
 
 export function Buyback() {
     const navigate = useNavigate();
@@ -38,6 +53,7 @@ export function Buyback() {
     const [customers, setCustomers] = useState<Customer[]>([]);
     const [searchCustomer, setSearchCustomer] = useState('');
     const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
+    const [isSearching, setIsSearching] = useState(false);
 
     const [customerTransactions, setCustomerTransactions] = useState<Transaction[]>([]);
     const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
@@ -46,15 +62,24 @@ export function Buyback() {
     const [selectedDate, setSelectedDate] = useState<string>(nowHanoiLocal());
     const [paymentMethod, setPaymentMethod] = useState<'cash' | 'bank_transfer'>('cash');
 
-    // Fetch customers on mount
+    // Debounced search effect
     useEffect(() => {
-        fetchCustomers();
-    }, []);
+        const timer = setTimeout(() => {
+            if (searchCustomer) {
+                fetchCustomers(searchCustomer);
+            } else {
+                setCustomers([]);
+            }
+        }, 300); // 300ms delay
+
+        return () => clearTimeout(timer);
+    }, [searchCustomer]);
 
     // Fetch customer transactions when customer is selected
     useEffect(() => {
         if (selectedCustomer) {
             fetchCustomerTransactions(selectedCustomer.id);
+            setSearchCustomer(selectedCustomer.name); // Keep name in input
         } else {
             setCustomerTransactions([]);
             setSelectedTransaction(null);
@@ -62,12 +87,16 @@ export function Buyback() {
         }
     }, [selectedCustomer]);
 
-    const fetchCustomers = async () => {
+
+    const fetchCustomers = async (query: string) => {
+        setIsSearching(true);
         try {
-            const res = await axios.get('/api/v1/customers/?limit=200');
+            const res = await axios.get(`/api/v1/customers/?search=${query}&limit=20`);
             setCustomers(res.data);
         } catch (e) {
             console.error("Failed to fetch customers", e);
+        } finally {
+            setIsSearching(false);
         }
     };
 
@@ -81,13 +110,6 @@ export function Buyback() {
         }
     };
 
-    // Filter customers for display
-    const filteredCustomers = customers.filter(c =>
-        c.name.toLowerCase().includes(searchCustomer.toLowerCase()) ||
-        (c.phone_number && c.phone_number.includes(searchCustomer)) ||
-        (c.cccd && c.cccd.includes(searchCustomer))
-    );
-
     const selectTransaction = (tx: Transaction) => {
         if (tx.order_status === 'Mua lại' || tx.order_status === 'Đã giao' || tx.order_status === 'Bán lại NSX') {
             return; // Prevent selection
@@ -95,11 +117,12 @@ export function Buyback() {
 
         setSelectedTransaction(tx);
         // Pre-populate buyback items from transaction items
-        // Only include items that have status 'sold'
+        // Only include items that have status 'Đã bán' or 'Đã đặt hàng'
         const items: BuybackItem[] = tx.items
-            .filter(item => item.product.status === 'Đã bán')
+            .filter(item => item.product.status === 'Đã bán' || item.product.status === 'Đã đặt hàng')
             .map(item => ({
                 product_id: item.product_id,
+                product_code: item.product.product_code,
                 product_type: item.product.product_type,
                 original_price: item.price_at_time,
                 buyback_price: item.price_at_time // Default to original price
@@ -172,7 +195,15 @@ export function Buyback() {
                     <Button variant="ghost" onClick={() => navigate('/dashboard')}>
                         <ArrowLeft className="h-5 w-5" />
                     </Button>
-                    <h1 className="text-3xl font-bold text-gray-900">Mua lại đơn hàng</h1>
+                    <h1 className="text-3xl font-bold text-gray-900">
+                        <Repeat className="inline-block mr-2 h-8 w-8 text-red-600" />
+                        Mua lại đơn hàng
+                    </h1>
+                </div>
+
+                <div className="bg-yellow-50 text-yellow-800 p-4 rounded-xl border border-yellow-200 text-sm flex items-start gap-3">
+                    <div className="font-bold shrink-0">⚠️ Lưu ý:</div>
+                    <div>Chỉ mua lại đơn cọc ở đây, mua lại bạc vật lý trên phần mềm vàng.</div>
                 </div>
 
                 {/* Customer Search */}
@@ -183,26 +214,30 @@ export function Buyback() {
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                             <Input
                                 className="pl-10"
-                                placeholder="Search by name, phone, or CCCD..."
+                                placeholder="Nhập tên hoặc số điện thoại, CCCD..."
                                 value={searchCustomer}
                                 onChange={(e) => {
                                     setSearchCustomer(e.target.value);
-                                    if (selectedCustomer) {
+                                    if (selectedCustomer && e.target.value !== selectedCustomer.name) {
                                         setSelectedCustomer(null);
                                     }
                                 }}
                             />
+                            {isSearching && (
+                                <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                                    <div className="animate-spin h-4 w-4 border-2 border-blue-500 border-t-transparent rounded-full"></div>
+                                </div>
+                            )}
                         </div>
 
-                        {searchCustomer && !selectedCustomer && (
+                        {searchCustomer && !selectedCustomer && customers.length > 0 && (
                             <div className="max-h-48 overflow-y-auto border rounded bg-white">
-                                {filteredCustomers.map(c => (
+                                {customers.map(c => (
                                     <div
                                         key={c.id}
                                         className="p-3 hover:bg-gray-100 cursor-pointer border-b last:border-b-0"
                                         onClick={() => {
                                             setSelectedCustomer(c);
-                                            setSearchCustomer(c.name);
                                         }}
                                     >
                                         <div className="font-medium">{c.name}</div>
@@ -211,9 +246,11 @@ export function Buyback() {
                                         </div>
                                     </div>
                                 ))}
-                                {filteredCustomers.length === 0 && (
-                                    <div className="p-3 text-gray-500">Không tìm thấy khách hàng</div>
-                                )}
+                            </div>
+                        )}
+                        {searchCustomer && !selectedCustomer && customers.length === 0 && !isSearching && (
+                            <div className="p-3 text-gray-500 border rounded bg-white">
+                                Không tìm thấy khách hàng
                             </div>
                         )}
 
@@ -253,7 +290,13 @@ export function Buyback() {
                                                 <div className="flex justify-between items-start">
                                                     <div>
                                                         <div className="flex items-center gap-2">
-                                                            <div className="font-medium">Đơn #{tx.id}</div>
+                                                            <div className="font-medium">
+                                                                {tx.transaction_code ? (
+                                                                    <span>{tx.transaction_code} <span className="text-gray-400 text-xs">#{tx.id}</span></span>
+                                                                ) : (
+                                                                    <span>Đơn số #{tx.id}</span>
+                                                                )}
+                                                            </div>
                                                             {tx.order_status && (
                                                                 <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${tx.order_status === 'Đã giao' ? 'bg-green-100 text-green-800' :
                                                                     tx.order_status === 'Mua lại' ? 'bg-blue-100 text-blue-800' :
@@ -267,7 +310,7 @@ export function Buyback() {
                                                             {formatDate(tx.created_at)} {formatTime(tx.created_at)}
                                                         </div>
                                                         <div className="text-sm text-gray-500">
-                                                            Store: {tx.store?.name || 'N/A'} | Staff: {tx.staff?.staff_name || 'N/A'}
+                                                            Cửa hàng: {tx.store?.name || 'N/A'} | Nhân viên: {tx.staff?.staff_name || 'N/A'}
                                                         </div>
                                                     </div>
                                                     <div className="text-right">
@@ -275,21 +318,22 @@ export function Buyback() {
                                                             {formatCurrency(tx.items.reduce((sum, item) => sum + item.price_at_time, 0))}
                                                         </div>
                                                         <div className="text-sm text-gray-500">
-                                                            {tx.items.length} item(s)
+                                                            {tx.items.length} sản phẩm
                                                         </div>
                                                     </div>
                                                 </div>
-                                                {/* Show items preview */}
-                                                <div className="mt-2 text-sm text-gray-600">
+                                                <div className="mt-3 flex flex-wrap gap-2 text-sm text-gray-600">
                                                     {tx.items.map(item => (
-                                                        <span key={item.id} className={`inline-block mr-2 px-2 py-0.5 rounded text-xs ${item.product.status === 'Đã bán'
-                                                            ? 'bg-green-100 text-green-800'
-                                                            : item.product.status === 'Đã giao'
-                                                                ? 'bg-green-100 text-green-800'
-                                                                : 'bg-gray-100 text-gray-500'
-                                                            }`}>
-                                                            #{item.product_id} {item.product.product_type} ({item.product.status})
-                                                        </span>
+                                                        <div key={item.id} className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs bg-gray-50 border border-gray-100">
+                                                            <span className="text-gray-500">SP số #{item.product_id}</span>
+                                                            <span className="text-gray-300">|</span>
+                                                            <span className="text-gray-600 font-medium">Loại: {item.product.product_type}</span>
+                                                            <span className="text-gray-300">|</span>
+                                                            <span className="text-gray-500">Trạng thái: </span>
+                                                            <span className={`px-2 py-0.5 rounded font-semibold whitespace-nowrap text-center ${getProductBadgeClass(item.product.status || '')}`}>
+                                                                {item.product.status}
+                                                            </span>
+                                                        </div>
                                                     ))}
                                                 </div>
                                             </div>
@@ -344,7 +388,12 @@ export function Buyback() {
                                             {buybackItems.map(item => (
                                                 <tr key={item.product_id} className="border-t">
                                                     <td className="p-2">
-                                                        <span className="font-medium">#{item.product_id}</span> {item.product_type}
+                                                        <div>
+                                                            <span className="font-medium">#{item.product_id}</span> {item.product_type}
+                                                        </div>
+                                                        <div className="text-xs text-gray-500 font-mono">
+                                                            {item.product_code || '-'}
+                                                        </div>
                                                     </td>
                                                     <td className="p-2 text-right text-gray-500">
                                                         {formatCurrency(item.original_price)}

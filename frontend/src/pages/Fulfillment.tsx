@@ -11,7 +11,7 @@ import { formatDate, formatTime, nowHanoiLocal, hanoiToISO } from '../lib/dateUt
 interface Store { id: number; name: string; }
 interface Customer { id: number; name: string; phone_number: string; cccd: string; }
 interface Staff { id: number; staff_name: string; }
-interface Product { id: number; product_type: string; status: string; last_price: number; is_delivered?: boolean; }
+interface Product { id: number; product_type: string; status: string; last_price: number; is_delivered?: boolean; product_code?: string; }
 interface TransactionItem { id: number; product_id: number; price_at_time: number; product: Product; }
 interface Transaction {
     id: number;
@@ -22,15 +22,30 @@ interface Transaction {
     staff: Staff;
     items: TransactionItem[];
     order_status?: string;
+    transaction_code?: string;
 }
 
 interface FulfillmentItem {
     product_id: number;
+    product_code?: string;
     product_type: string;
     price: number;
     is_delivered?: boolean;
     status: string;
 }
+
+const getProductBadgeClass = (status: string) => {
+    switch (status) {
+        case 'Đã bán': return 'bg-blue-100 text-blue-800';
+        case 'Có sẵn': return 'bg-green-100 text-green-800';
+        case 'Đã đặt hàng': return 'bg-purple-100 text-purple-800';
+        case 'Đã giao': return 'bg-teal-100 text-teal-800';
+        case 'Đã bán lại NSX': return 'bg-red-100 text-red-800';
+        case 'Đã nhận hàng NSX': return 'bg-orange-100 text-orange-800';
+        case 'Mua lại': return 'bg-indigo-100 text-indigo-800';
+        default: return 'bg-gray-100 text-gray-600';
+    }
+};
 
 export function Fulfillment() {
     const navigate = useNavigate();
@@ -39,6 +54,7 @@ export function Fulfillment() {
     const [customers, setCustomers] = useState<Customer[]>([]);
     const [searchCustomer, setSearchCustomer] = useState('');
     const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
+    const [isSearching, setIsSearching] = useState(false);
 
     const [customerTransactions, setCustomerTransactions] = useState<Transaction[]>([]);
     const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
@@ -52,14 +68,27 @@ export function Fulfillment() {
 
     // Fetch data on mount
     useEffect(() => {
-        fetchCustomers();
         fetchStaff();
     }, []);
+
+    // Debounced search effect
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            if (searchCustomer) {
+                fetchCustomers(searchCustomer);
+            } else {
+                setCustomers([]);
+            }
+        }, 300); // 300ms delay
+
+        return () => clearTimeout(timer);
+    }, [searchCustomer]);
 
     // Fetch customer transactions when customer is selected
     useEffect(() => {
         if (selectedCustomer) {
             fetchCustomerTransactions(selectedCustomer.id);
+            setSearchCustomer(selectedCustomer.name);
         } else {
             setCustomerTransactions([]);
             setSelectedTransaction(null);
@@ -67,12 +96,15 @@ export function Fulfillment() {
         }
     }, [selectedCustomer]);
 
-    const fetchCustomers = async () => {
+    const fetchCustomers = async (query: string) => {
+        setIsSearching(true);
         try {
-            const res = await axios.get('/api/v1/customers/?limit=200');
+            const res = await axios.get(`/api/v1/customers/?search=${query}&limit=20`);
             setCustomers(res.data);
         } catch (e) {
             console.error("Failed to fetch customers", e);
+        } finally {
+            setIsSearching(false);
         }
     };
 
@@ -107,26 +139,20 @@ export function Fulfillment() {
         }
     };
 
-    // Filter customers for display
-    const filteredCustomers = customers.filter(c =>
-        c.name.toLowerCase().includes(searchCustomer.toLowerCase()) ||
-        (c.phone_number && c.phone_number.includes(searchCustomer)) ||
-        (c.cccd && c.cccd.includes(searchCustomer))
-    );
-
     const selectTransaction = (tx: Transaction) => {
-        if (tx.order_status === 'managed' || tx.order_status === 'Mua lại' || tx.order_status === 'Đã giao' || tx.order_status === 'Bán lại NSX') {
+        const isCompleted = tx.order_status === 'managed' || tx.order_status === 'Mua lại' || tx.order_status === 'Đã giao' || tx.order_status === 'Bán lại NSX';
+        if (isCompleted) {
             // Don't select if already processed
             return;
         }
 
         setSelectedTransaction(tx);
-        // Pre-populate fulfillment items from transaction items
-        // Only include items that are 'sold' or 'received from manufacturer' (ready for delivery)
+        // Strict filtering: Only items with 'Đã nhận hàng NSX' status can be fulfilled/delivered to customer
         const items: FulfillmentItem[] = tx.items
-            .filter(item => item.product.status === 'Đã bán' || item.product.status === 'Đã nhận hàng NSX')
+            .filter(item => item.product.status === 'Đã nhận hàng NSX')
             .map(item => ({
                 product_id: item.product_id,
+                product_code: item.product.product_code,
                 product_type: item.product.product_type,
                 price: item.price_at_time,
                 is_delivered: item.product.is_delivered,
@@ -193,7 +219,9 @@ export function Fulfillment() {
 
     // Helper to check if order is processable
     const isProcessable = (tx: Transaction) => {
-        return !tx.order_status; // Processable if status is null/undefined
+        const isCompleted = tx.order_status === 'managed' || tx.order_status === 'Mua lại' || tx.order_status === 'Đã giao' || tx.order_status === 'Bán lại NSX';
+        const hasReadyItems = tx.items.some(item => item.product.status === 'Đã nhận hàng NSX');
+        return !isCompleted && hasReadyItems;
     };
 
     return (
@@ -209,6 +237,69 @@ export function Fulfillment() {
                     </h1>
                 </div>
 
+                <div className="bg-yellow-50 text-yellow-800 p-4 rounded-xl border border-yellow-200 text-sm flex items-start gap-3">
+                    <div className="font-bold shrink-0">⚠️ Lưu ý:</div>
+                    <div>Chỉ mua lại đơn cọc ở đây, mua lại bạc vật lý trên phần mềm vàng.</div>
+                </div>
+
+                {/* Status Legend */}
+                <Card>
+                    <CardHeader className="pb-3">
+                        <CardTitle className="text-sm font-medium">Chú thích trạng thái sản phẩm</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-sm">
+                            <div className="flex items-start gap-2">
+                                <span className="bg-blue-100 text-blue-800 px-2 py-0.5 rounded text-xs font-semibold whitespace-nowrap min-w-[90px] text-center">Đã bán</span>
+                                <span className="text-gray-600 text-xs">Sản phẩm khách đã đặt</span>
+                            </div>
+                            <div className="flex items-start gap-2">
+                                <span className="bg-green-100 text-green-800 px-2 py-0.5 rounded text-xs font-semibold whitespace-nowrap min-w-[90px] text-center">Có sẵn</span>
+                                <span className="text-gray-600 text-xs">Đã đặt dư trong kho, sẵn sàng để bán</span>
+                            </div>
+                            <div className="flex items-start gap-2">
+                                <span className="bg-purple-100 text-purple-800 px-2 py-0.5 rounded text-xs font-semibold whitespace-nowrap min-w-[90px] text-center">Đã đặt hàng</span>
+                                <span className="text-gray-600 text-xs">Đã lên đơn đặt hàng với Ancarat</span>
+                            </div>
+                            <div className="flex items-start gap-2">
+                                <span className="bg-teal-100 text-teal-800 px-2 py-0.5 rounded text-xs font-semibold whitespace-nowrap min-w-[90px] text-center">Đã giao</span>
+                                <span className="text-gray-600 text-xs">Đã đưa hàng cho khách</span>
+                            </div>
+                            <div className="flex items-start gap-2">
+                                <span className="bg-red-100 text-red-800 px-2 py-0.5 rounded text-xs font-semibold whitespace-nowrap min-w-[90px] text-center">Đã bán lại NSX</span>
+                                <span className="text-gray-600 text-xs">Đã bán lại cho Ancarat</span>
+                            </div>
+                            <div className="flex items-start gap-2">
+                                <span className="bg-orange-100 text-orange-800 px-2 py-0.5 rounded text-xs font-semibold whitespace-nowrap min-w-[90px] text-center">Đã nhận hàng NSX</span>
+                                <span className="text-gray-600 text-xs">Đã về cửa hàng, chờ giao</span>
+                            </div>
+                            <div className="flex items-start gap-2">
+                                <span className="bg-indigo-100 text-indigo-800 px-2 py-0.5 rounded text-xs font-semibold whitespace-nowrap min-w-[90px] text-center">Mua lại</span>
+                                <span className="text-gray-600 text-xs">Đơn hàng mua lại từ khách</span>
+                            </div>
+                        </div>
+
+                        <div className="mt-6 pt-4 border-t border-gray-100 flex flex-col gap-3 text-sm">
+                            <div className="flex items-center gap-2 flex-wrap">
+                                <span className="font-semibold text-gray-700">Sản phẩm khách đặt cọc:</span>
+                                <span className="bg-blue-100 text-blue-800 px-2 py-0.5 rounded text-xs font-semibold">Đã bán</span>
+                                <span className="text-gray-400">→</span>
+                                <span className="text-gray-600">Đặt hàng NSX</span>
+                                <span className="text-gray-400">→</span>
+                                <span className="bg-purple-100 text-purple-800 px-2 py-0.5 rounded text-xs font-semibold">Đã đặt hàng</span>
+                            </div>
+                            <div className="flex items-center gap-2 flex-wrap">
+                                <span className="font-semibold text-gray-700">Giao hàng:</span>
+                                <span className="bg-orange-100 text-orange-800 px-2 py-0.5 rounded text-xs font-semibold whitespace-nowrap min-w-[90px] text-center">Đã nhận hàng NSX</span>
+                                <span className="text-gray-400">→</span>
+                                <span className="text-gray-600">Giao cho khách hàng</span>
+                                <span className="text-gray-400">→</span>
+                                <span className="bg-teal-100 text-teal-800 px-2 py-0.5 rounded text-xs font-semibold whitespace-nowrap min-w-[90px] text-center">Đã giao</span>
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+
                 {/* Customer Search */}
                 <Card>
                     <CardHeader><CardTitle>Tìm khách hàng</CardTitle></CardHeader>
@@ -221,22 +312,26 @@ export function Fulfillment() {
                                 value={searchCustomer}
                                 onChange={(e) => {
                                     setSearchCustomer(e.target.value);
-                                    if (selectedCustomer) {
+                                    if (selectedCustomer && e.target.value !== selectedCustomer.name) {
                                         setSelectedCustomer(null);
                                     }
                                 }}
                             />
+                            {isSearching && (
+                                <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                                    <div className="animate-spin h-4 w-4 border-2 border-purple-500 border-t-transparent rounded-full"></div>
+                                </div>
+                            )}
                         </div>
 
-                        {searchCustomer && !selectedCustomer && (
+                        {searchCustomer && !selectedCustomer && customers.length > 0 && (
                             <div className="max-h-48 overflow-y-auto border rounded bg-white">
-                                {filteredCustomers.map(c => (
+                                {customers.map(c => (
                                     <div
                                         key={c.id}
                                         className="p-3 hover:bg-gray-100 cursor-pointer border-b last:border-b-0"
                                         onClick={() => {
                                             setSelectedCustomer(c);
-                                            setSearchCustomer(c.name);
                                         }}
                                     >
                                         <div className="font-medium">{c.name}</div>
@@ -245,17 +340,19 @@ export function Fulfillment() {
                                         </div>
                                     </div>
                                 ))}
-                                {filteredCustomers.length === 0 && (
-                                    <div className="p-3 text-gray-500">Không tìm thấy khách hàng</div>
-                                )}
+                            </div>
+                        )}
+                        {searchCustomer && !selectedCustomer && customers.length === 0 && !isSearching && (
+                            <div className="p-3 text-gray-500 border rounded bg-white">
+                                Không tìm thấy khách hàng
                             </div>
                         )}
 
                         {selectedCustomer && (
                             <div className="bg-purple-50 p-3 rounded text-purple-800">
-                                <div className="font-medium">Selected: {selectedCustomer.name}</div>
+                                <div className="font-medium">Thông tin khách hàng: {selectedCustomer.name}</div>
                                 <div className="text-sm">
-                                    Phone: {selectedCustomer.phone_number || 'N/A'} | CCCD: {selectedCustomer.cccd || 'N/A'}
+                                    Số điện thoại: {selectedCustomer.phone_number || 'N/A'} | CCCD: {selectedCustomer.cccd || 'N/A'}
                                 </div>
                             </div>
                         )}
@@ -287,7 +384,13 @@ export function Fulfillment() {
                                                 <div className="flex justify-between items-start">
                                                     <div>
                                                         <div className="flex items-center gap-2">
-                                                            <div className="font-medium">Order #{tx.id}</div>
+                                                            <div className="font-medium">
+                                                                {tx.transaction_code ? (
+                                                                    <span>{tx.transaction_code} <span className="text-gray-400 text-[0.65rem] leading-tight align-middle px-1 bg-gray-100 rounded-sm"> Đơn hàng số #{tx.id}</span></span>
+                                                                ) : (
+                                                                    <span>Đơn số #{tx.id}</span>
+                                                                )}
+                                                            </div>
                                                             {tx.order_status && (
                                                                 <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${tx.order_status === 'Đã giao' ? 'bg-green-100 text-green-800' :
                                                                     tx.order_status === 'Mua lại' ? 'bg-blue-100 text-blue-800' :
@@ -301,7 +404,7 @@ export function Fulfillment() {
                                                             {formatDate(tx.created_at)} {formatTime(tx.created_at)}
                                                         </div>
                                                         <div className="text-sm text-gray-500">
-                                                            Store: {tx.store?.name || 'N/A'} | Staff: {tx.staff?.staff_name || 'N/A'}
+                                                            Cửa hàng: {tx.store?.name || 'N/A'} | Nhân viên: {tx.staff?.staff_name || 'N/A'}
                                                         </div>
                                                     </div>
                                                     <div className="text-right">
@@ -309,21 +412,22 @@ export function Fulfillment() {
                                                             {formatCurrency(tx.items.reduce((sum, item) => sum + item.price_at_time, 0))}
                                                         </div>
                                                         <div className="text-sm text-gray-500">
-                                                            {tx.items.length} item(s)
+                                                            {tx.items.length} sản phẩm
                                                         </div>
                                                     </div>
                                                 </div>
-                                                {/* Show items preview */}
-                                                <div className="mt-2 text-sm text-gray-600">
+                                                <div className="mt-3 flex flex-wrap gap-2 text-sm text-gray-600">
                                                     {tx.items.map(item => (
-                                                        <span key={item.id} className={`inline-block mr-2 px-2 py-0.5 rounded text-xs ${item.product.status === 'Đã bán'
-                                                            ? 'bg-yellow-100 text-yellow-800'
-                                                            : item.product.status === 'Đã giao'
-                                                                ? 'bg-green-100 text-green-800'
-                                                                : 'bg-gray-100 text-gray-500'
-                                                            }`}>
-                                                            #{item.product_id} {item.product.product_type} ({item.product.status})
-                                                        </span>
+                                                        <div key={item.id} className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs bg-gray-50 border border-gray-100">
+                                                            <span className="text-gray-500">Sản phẩm #{item.product_id}</span>
+                                                            <span className="text-gray-300">|</span>
+                                                            <span className="text-gray-600 font-medium">Loại: {item.product.product_type}</span>
+                                                            <span className="text-gray-300">|</span>
+                                                            <span className="text-gray-500">Trạng thái: </span>
+                                                            <span className={`px-2 py-0.5 rounded font-semibold whitespace-nowrap text-center ${getProductBadgeClass(item.product.status || '')}`}>
+                                                                {item.product.status}
+                                                            </span>
+                                                        </div>
                                                     ))}
                                                 </div>
                                             </div>
@@ -352,7 +456,7 @@ export function Fulfillment() {
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium mb-1">Staff</label>
+                                    <label className="block text-sm font-medium mb-1">Nhân viên</label>
                                     <select
                                         className="w-full h-12 px-4 border border-gray-300 rounded-2xl focus:ring-2 focus:ring-blue-500"
                                         value={selectedStaffId || ''}
@@ -380,7 +484,7 @@ export function Fulfillment() {
                                     <table className="w-full text-sm">
                                         <thead className="bg-purple-100">
                                             <tr>
-                                                <th className="p-2 text-left">Sản phẩm</th>
+                                                <th className="p-2 text-left">Sản phẩm (Mã SP)</th>
                                                 <th className="p-2 text-left">Loại</th>
                                                 <th className="p-2 text-left">Trạng thái</th>
                                                 <th className="p-2 text-right">Giá</th>
@@ -392,6 +496,7 @@ export function Fulfillment() {
                                                 <tr key={item.product_id} className={`border-t ${!item.is_delivered ? 'bg-orange-50' : ''}`}>
                                                     <td className="p-2">
                                                         <span className="font-medium">#{item.product_id}</span>
+                                                        {item.product_code && <span className="font-mono ml-1 text-[10px] text-gray-500">({item.product_code})</span>}
                                                     </td>
                                                     <td className="p-2">{item.product_type}</td>
                                                     <td className="p-2">
@@ -436,6 +541,7 @@ export function Fulfillment() {
                             </div>
 
                             <Button
+                                type="button"
                                 className="w-full text-lg py-6 bg-purple-600 hover:bg-purple-700"
                                 onClick={handleSubmit}
                                 disabled={fulfillmentItems.length === 0}
@@ -465,6 +571,7 @@ export function Fulfillment() {
 
                         <div className="flex justify-end gap-3">
                             <Button
+                                type="button"
                                 variant="ghost"
                                 onClick={() => setShowWarningModal(false)}
                                 className="text-gray-600"
@@ -472,6 +579,7 @@ export function Fulfillment() {
                                 Hủy bỏ
                             </Button>
                             <Button
+                                type="button"
                                 className="bg-orange-600 hover:bg-orange-700 text-white"
                                 onClick={() => {
                                     setShowWarningModal(false);

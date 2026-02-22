@@ -4,7 +4,7 @@ import axios from 'axios';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
 import { Input } from '../components/ui/Input';
 import { Button } from '../components/ui/Button';
-import { ArrowLeft, Save } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import { formatDate, formatTime, todayHanoi } from '../lib/dateUtils';
 
 // Types
@@ -16,6 +16,7 @@ interface Product {
     last_price: number;
     store_id: number;
     store_name?: string;
+    store?: Store;
     customer_name?: string;
     order_date?: string;
     is_delivered?: boolean;
@@ -49,37 +50,19 @@ interface Transaction {
     staff?: Staff;
 }
 
-// iOS-style Switch component
-function IOSSwitch({ checked, onChange, disabled = false }: {
-    checked: boolean;
-    onChange: (checked: boolean) => void;
-    disabled?: boolean;
-}) {
-    return (
-        <button
-            type="button"
-            role="switch"
-            aria-checked={checked}
-            disabled={disabled}
-            onClick={() => !disabled && onChange(!checked)}
-            className={`
-                relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full 
-                border-2 border-transparent transition-colors duration-200 ease-in-out
-                focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2
-                ${checked ? 'bg-green-500' : 'bg-gray-300'}
-                ${disabled ? 'opacity-50 cursor-not-allowed' : ''}
-            `}
-        >
-            <span
-                className={`
-                    pointer-events-none inline-block h-5 w-5 transform rounded-full 
-                    bg-white shadow-lg ring-0 transition duration-200 ease-in-out
-                    ${checked ? 'translate-x-5' : 'translate-x-0'}
-                `}
-            />
-        </button>
-    );
-}
+
+
+const getStatusColor = (status: string) => {
+    switch (status) {
+        case 'Đã bán': return 'bg-blue-100 text-blue-800';
+        case 'Có sẵn': return 'bg-green-100 text-green-800';
+        case 'Đã đặt hàng': return 'bg-purple-100 text-purple-800';
+        case 'Đã giao': return 'bg-teal-100 text-teal-800';
+        case 'Đã bán lại NSX': return 'bg-red-100 text-red-800';
+        case 'Đã nhận hàng NSX': return 'bg-orange-100 text-orange-800';
+        default: return 'bg-gray-100 text-gray-800';
+    }
+};
 
 export function ManufacturerOrderList() {
     const navigate = useNavigate();
@@ -92,7 +75,7 @@ export function ManufacturerOrderList() {
 
     // Track delivery status changes
     const [deliveryChanges, setDeliveryChanges] = useState<Map<number, boolean>>(new Map());
-    const [savingDelivery, setSavingDelivery] = useState(false);
+
 
     useEffect(() => {
         fetchData();
@@ -118,44 +101,6 @@ export function ManufacturerOrderList() {
         }
     };
 
-    const handleDeliveryToggle = (productId: number, currentValue: boolean) => {
-        const newChanges = new Map(deliveryChanges);
-        newChanges.set(productId, !currentValue);
-        setDeliveryChanges(newChanges);
-    };
-
-    const getDeliveryStatus = (product: Product): boolean => {
-        // Check if there's a pending change, otherwise use the product's current value
-        if (deliveryChanges.has(product.id)) {
-            return deliveryChanges.get(product.id)!;
-        }
-        return product.is_delivered || false;
-    };
-
-    const hasUnsavedChanges = deliveryChanges.size > 0;
-
-    const saveDeliveryChanges = async () => {
-        if (deliveryChanges.size === 0) return;
-
-        setSavingDelivery(true);
-        try {
-            const updates = Array.from(deliveryChanges.entries()).map(([productId, isDelivered]) => ({
-                product_id: productId,
-                is_delivered: isDelivered
-            }));
-
-            await axios.post('/api/v1/products/delivery-status/batch', { updates });
-
-            alert(`Successfully updated ${updates.length} product(s)`);
-            setDeliveryChanges(new Map());
-            fetchData(); // Refresh data
-        } catch (error) {
-            console.error("Error saving delivery status:", error);
-            alert("Failed to save delivery status changes");
-        } finally {
-            setSavingDelivery(false);
-        }
-    };
 
     const formatCurrency = (amount: number) => {
         return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
@@ -180,19 +125,65 @@ export function ManufacturerOrderList() {
                         </Button>
                         <h1 className="text-3xl font-bold text-gray-900">Đơn hàng NSX</h1>
                     </div>
-
-                    {/* Save Delivery Changes Button */}
-                    {hasUnsavedChanges && (
-                        <Button
-                            onClick={saveDeliveryChanges}
-                            disabled={savingDelivery}
-                            className="bg-green-600 hover:bg-green-700 flex items-center gap-2"
-                        >
-                            <Save className="h-4 w-4" />
-                            Save Changes ({deliveryChanges.size})
-                        </Button>
-                    )}
                 </div>
+
+                {/* Status Legend */}
+                <Card>
+                    <CardHeader className="pb-3">
+                        <CardTitle className="text-sm font-medium">Chú thích trạng thái sản phẩm</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-sm">
+                            <div className="flex items-start gap-2">
+                                <span className="bg-blue-100 text-blue-800 px-2 py-0.5 rounded text-xs font-semibold whitespace-nowrap min-w-[90px] text-center">Đã bán</span>
+                                <span className="text-gray-600 text-xs">Sản phẩm khách đã đặt</span>
+                            </div>
+                            <div className="flex items-start gap-2">
+                                <span className="bg-green-100 text-green-800 px-2 py-0.5 rounded text-xs font-semibold whitespace-nowrap min-w-[90px] text-center">Có sẵn</span>
+                                <span className="text-gray-600 text-xs">Đã đặt dư trong kho, sẵn sàng để bán</span>
+                            </div>
+                            <div className="flex items-start gap-2">
+                                <span className="bg-purple-100 text-purple-800 px-2 py-0.5 rounded text-xs font-semibold whitespace-nowrap min-w-[90px] text-center">Đã đặt hàng</span>
+                                <span className="text-gray-600 text-xs">Đã lên đơn đặt hàng với Ancarat</span>
+                            </div>
+                            <div className="flex items-start gap-2">
+                                <span className="bg-teal-100 text-teal-800 px-2 py-0.5 rounded text-xs font-semibold whitespace-nowrap min-w-[90px] text-center">Đã giao</span>
+                                <span className="text-gray-600 text-xs">Đã đưa hàng cho khách</span>
+                            </div>
+                            <div className="flex items-start gap-2">
+                                <span className="bg-red-100 text-red-800 px-2 py-0.5 rounded text-xs font-semibold whitespace-nowrap min-w-[90px] text-center">Đã bán lại NSX</span>
+                                <span className="text-gray-600 text-xs">Đã bán lại cho Ancarat</span>
+                            </div>
+                            <div className="flex items-start gap-2">
+                                <span className="bg-orange-100 text-orange-800 px-2 py-0.5 rounded text-xs font-semibold whitespace-nowrap min-w-[90px] text-center">Đã nhận hàng NSX</span>
+                                <span className="text-gray-600 text-xs">Đã về cửa hàng, chờ giao</span>
+                            </div>
+                            <div className="flex items-start gap-2">
+                                <span className="bg-indigo-100 text-indigo-800 px-2 py-0.5 rounded text-xs font-semibold whitespace-nowrap min-w-[90px] text-center">Mua lại</span>
+                                <span className="text-gray-600 text-xs">Đơn hàng mua lại từ khách</span>
+                            </div>
+                        </div>
+
+                        <div className="mt-6 pt-4 border-t border-gray-100 flex flex-col gap-3 text-sm">
+                            <div className="flex items-center gap-2 flex-wrap">
+                                <span className="font-semibold text-gray-700">Sản phẩm khách đặt cọc:</span>
+                                <span className="bg-blue-100 text-blue-800 px-2 py-0.5 rounded text-xs font-semibold">Đã bán</span>
+                                <span className="text-gray-400">→</span>
+                                <span className="text-gray-600">Đặt hàng NSX</span>
+                                <span className="text-gray-400">→</span>
+                                <span className="bg-purple-100 text-purple-800 px-2 py-0.5 rounded text-xs font-semibold">Đã đặt hàng</span>
+                            </div>
+                            <div className="flex items-center gap-2 flex-wrap">
+                                <span className="font-semibold text-gray-700">Hàng mới đặt thêm từ NSX:</span>
+                                <span className="bg-green-100 text-green-800 px-2 py-0.5 rounded text-xs font-semibold">Có sẵn</span>
+                                <span className="text-gray-400">→</span>
+                                <span className="text-gray-600">Bán cho khách hàng</span>
+                                <span className="text-gray-400">→</span>
+                                <span className="bg-blue-100 text-blue-800 px-2 py-0.5 rounded text-xs font-semibold">Đã bán</span>
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
 
                 {/* Date Filter */}
                 <Card>
@@ -271,12 +262,9 @@ export function ManufacturerOrderList() {
                                         <div className="flex justify-between items-start mb-3">
                                             <div>
                                                 <div className="flex items-center gap-2">
-                                                    <span className="font-bold">{order.transaction_code || `Order #${order.id}`}</span>
-                                                    {order.code && (
-                                                        <span className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded text-sm">
-                                                            {order.code}
-                                                        </span>
-                                                    )}
+                                                    <span className="font-bold text-blue-700 px-2 py-1 bg-blue-100 rounded text-sm">
+                                                        {order.code || `Order #${order.id}`}
+                                                    </span>
                                                 </div>
                                                 <div className="text-sm text-gray-500">
                                                     {formatDate(order.created_at)}{' '}
@@ -297,6 +285,7 @@ export function ManufacturerOrderList() {
                                                 <tr>
                                                     <th className="px-3 py-2 text-left">Mã sản phẩm</th>
                                                     <th className="px-3 py-2 text-left">Loại</th>
+                                                    <th className="px-3 py-2 text-left">Cửa hàng nhận</th>
                                                     <th className="px-3 py-2 text-right">Giá</th>
                                                     <th className="px-3 py-2 text-center">Trạng thái</th>
                                                     {/* <th className="px-3 py-2 text-center">Đã nhận hàng NSX</th> */}
@@ -317,17 +306,12 @@ export function ManufacturerOrderList() {
                                                                 <div className="text-xs text-gray-500 font-mono">{item.product.product_code || '-'}</div>
                                                             </td>
                                                             <td className="px-3 py-2">{item.product.product_type}</td>
+                                                            <td className="px-3 py-2">{item.product.store?.name || '-'}</td>
                                                             <td className="px-3 py-2 text-right">{formatCurrency(item.price_at_time)}</td>
                                                             <td className="px-3 py-2 text-center">
-                                                                {item.product.status === 'Đã bán lại NSX' ? (
-                                                                    <span className="inline-block bg-red-100 text-red-700 px-2 py-0.5 rounded text-xs font-medium">
-                                                                        Đã bán lại NSX
-                                                                    </span>
-                                                                ) : (
-                                                                    <span className="inline-block bg-green-100 text-green-700 px-2 py-0.5 rounded text-xs font-medium">
-                                                                        {item.product.status}
-                                                                    </span>
-                                                                )}
+                                                                <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${getStatusColor(item.product.status)}`}>
+                                                                    {item.product.status}
+                                                                </span>
                                                             </td>
                                                             {/* <td className="px-3 py-2">
                                                                 <div className="flex items-center justify-center gap-2">
@@ -361,7 +345,7 @@ export function ManufacturerOrderList() {
                             </CardTitle>
                             {pendingProducts.length > 0 && (
                                 <Button onClick={() => navigate('/manufacturer-order')}>
-                                    Create Manufacturer Order
+                                    Tạo đơn đặt hàng NSX
                                 </Button>
                             )}
                         </div>

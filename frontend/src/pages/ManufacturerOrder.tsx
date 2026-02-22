@@ -4,7 +4,7 @@ import axios from 'axios';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
-import { Trash, Plus } from 'lucide-react';
+import { Trash, Plus, ArrowLeft, Factory } from 'lucide-react';
 import { formatCurrency } from '../lib/utils';
 import { formatDate, formatTime, nowHanoiLocal, todayHanoi, hanoiToISO } from '../lib/dateUtils';
 
@@ -22,9 +22,11 @@ interface ManufacturerOrderItem {
 interface Product {
     id: number;
     product_type: string;
+    product_code?: string;
     status: string;
     last_price: number;
     store_id: number;
+    is_ordered?: boolean;
     // UI Helpers
     customer_name?: string;
     order_date?: string;
@@ -41,6 +43,7 @@ interface Transaction {
     id: number;
     created_at: string;
     customer?: { name: string };
+    store?: { name: string };
     items: TransactionItem[];
 }
 
@@ -92,10 +95,11 @@ export function ManufacturerOrder() {
                 const prods = tx.items.map(item => ({
                     ...item.product,
                     customer_name: tx.customer?.name,
-                    order_date: tx.created_at
+                    order_date: tx.created_at,
+                    store_name: tx.store?.name
                 }));
-                // Filter out nulls if any product is missing
-                setTxProducts(prods.filter(p => p && p.id));
+                // Strict filtering: Only allow products in 'Đã bán' status and NOT is_ordered
+                setTxProducts(prods.filter(p => p && p.id && p.status === 'Đã bán' && !p.is_ordered));
             }
         } else {
             setTxProducts([]);
@@ -104,7 +108,13 @@ export function ManufacturerOrder() {
 
     const fetchTransactions = async () => {
         try {
-            const res = await axios.get(`/api/v1/transactions/?start_date=${searchDate}&end_date=${searchDate}`);
+            const res = await axios.get('/api/v1/transactions/', {
+                params: {
+                    start_date: searchDate,
+                    end_date: searchDate,
+                    tx_type: 'Đơn cọc'
+                }
+            });
             setTransactions(res.data);
         } catch (e) {
             console.error("Failed to fetch transactions", e);
@@ -124,17 +134,17 @@ export function ManufacturerOrder() {
 
     const addItem = () => {
         if (price <= 0) {
-            alert("Price must be > 0");
+            alert("Giá phải lớn hơn 0");
             return;
         }
 
         if (mode === 'existing') {
             if (!selectedProduct) {
-                alert("Please select a product");
+                alert("Vui lòng chọn sản phẩm");
                 return;
             }
             if (quantity !== 1) {
-                alert("For existing unique products, quantity must be 1. Add multiple items for different products.");
+                alert("Đối với các sản phẩm duy nhất hiện có, số lượng phải là 1. Thêm nhiều mặt hàng cho các sản phẩm khác nhau.");
                 return;
             }
 
@@ -165,11 +175,11 @@ export function ManufacturerOrder() {
 
     const handleSubmit = async () => {
         if (!selectedStore) {
-            alert("Please select a store");
+            alert("Vui lòng chọn cửa hàng");
             return;
         }
         if (!orderCode) {
-            alert("Please enter Order Code");
+            alert("Vui lòng nhập mã đơn hàng");
             return;
         }
 
@@ -183,10 +193,10 @@ export function ManufacturerOrder() {
             };
             console.log("Submitting:", payload);
             await axios.post('/api/v1/transactions/manufacturer-order', payload);
-            alert("Manufacturer Order Created Successfully!");
+            alert("Tạo đơn đặt hàng NSX thành công!");
             navigate('/dashboard'); // Or to list
         } catch (e) {
-            alert("Error creating order");
+            alert("Lỗi tạo đơn hàng");
             console.error(e);
         }
     };
@@ -194,7 +204,15 @@ export function ManufacturerOrder() {
     return (
         <div className="min-h-screen bg-gray-50 p-6">
             <div className="max-w-4xl mx-auto space-y-6">
-                <h1 className="text-3xl font-bold text-gray-900">Đặt hàng NSX mới</h1>
+                <div className="flex items-center gap-4">
+                    <Button variant="ghost" onClick={() => navigate('/dashboard')}>
+                        <ArrowLeft className="h-5 w-5" />
+                    </Button>
+                    <h1 className="text-3xl font-bold text-gray-900">
+                        <Factory className="inline-block mr-2 h-8 w-8 text-blue-600" />
+                        Đặt hàng NSX mới
+                    </h1>
+                </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {/* Store & Info */}
@@ -261,7 +279,7 @@ export function ManufacturerOrder() {
                                     </div>
 
                                     <div>
-                                        <label className="block text-sm font-medium mb-1">Select Transaction</label>
+                                        <label className="block text-sm font-medium mb-1">Danh sách đơn hàng</label>
                                         <select
                                             className="w-full rounded-md border border-gray-300 p-2"
                                             value={selectedTxId || ''}
@@ -290,11 +308,19 @@ export function ManufacturerOrder() {
                                                 }}
                                             >
                                                 <option value="">-- Chọn sản phẩm --</option>
-                                                {txProducts.map(p => (
-                                                    <option key={p.id} value={p.id}>
-                                                        #{p.id} {p.product_type} ({p.status}) - {formatCurrency(p.last_price)}
-                                                    </option>
-                                                ))}
+                                                {txProducts.map(p => {
+                                                    const isAdded = orderItems.some(item => item.product_id === p.id);
+                                                    return (
+                                                        <option
+                                                            key={p.id}
+                                                            value={p.id}
+                                                            disabled={isAdded}
+                                                            className={isAdded ? "bg-gray-100 text-gray-400" : ""}
+                                                        >
+                                                            #{p.id} {p.product_code ? `- ${p.product_code} ` : ''}- {p.product_type} ({p.status}) - {formatCurrency(p.last_price)} {isAdded ? '(Đã thêm)' : ''}
+                                                        </option>
+                                                    );
+                                                })}
                                             </select>
                                         </div>
                                     )}
@@ -302,18 +328,18 @@ export function ManufacturerOrder() {
                                     {selectedProduct && (
                                         <div className="bg-blue-50 p-2 rounded text-blue-800 text-sm mt-2">
                                             <div>
-                                                Selected: <strong>#{selectedProduct.id} {selectedProduct.product_type}</strong>
+                                                Sản phẩm được chọn: <strong>#{selectedProduct.id} {selectedProduct.product_type}</strong>
                                                 <span className="ml-2 text-xs bg-blue-200 px-1 rounded">{selectedProduct.status}</span>
                                             </div>
                                             <div className="text-xs text-blue-600 mt-1">
-                                                Last Price: {formatCurrency(selectedProduct.last_price)}
+                                                Giá: {formatCurrency(selectedProduct.last_price)}
                                             </div>
                                             {selectedProduct.customer_name && (
                                                 <div className="mt-2 pt-2 border-t border-blue-200 text-xs text-gray-700">
-                                                    <div><strong>Customer Order Info:</strong></div>
-                                                    <div>Customer: {selectedProduct.customer_name}</div>
-                                                    <div>Store: {selectedProduct.store_name}</div>
-                                                    <div>Date: {selectedProduct.order_date ? formatDate(selectedProduct.order_date) : '-'}</div>
+                                                    <div><strong>Thông tin chi tiết đơn hàng:</strong></div>
+                                                    <div>Khách hàng: {selectedProduct.customer_name}</div>
+                                                    <div>Cửa hàng: {selectedProduct.store_name}</div>
+                                                    <div>Ngày: {selectedProduct.order_date ? formatDate(selectedProduct.order_date) : '-'}</div>
                                                 </div>
                                             )}
                                         </div>
@@ -330,7 +356,6 @@ export function ManufacturerOrder() {
                                         <option value="1 lượng">1 lượng</option>
                                         <option value="5 lượng">5 lượng</option>
                                         <option value="1 kg">1 kg</option>
-                                        <option value="khác">Khác</option>
                                     </select>
                                 </div>
                             )}
@@ -409,7 +434,7 @@ export function ManufacturerOrder() {
                         )}
 
                         <div className="mt-6 flex justify-end">
-                            <Button className="w-40 text-lg py-6" onClick={handleSubmit} disabled={orderItems.length === 0}>
+                            <Button type="button" className="w-40 text-lg py-6" onClick={handleSubmit} disabled={orderItems.length === 0 || !orderCode}>
                                 Ghi đơn hàng
                             </Button>
                         </div>

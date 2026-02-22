@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hợp đồng bán hàng - Hoa Tùng</title>
+    <style>
+        body {
+            font-family: "Times New Roman", Times, serif;
+            line-height: 1.4;
+            margin: 0;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+
+        .contract-container {
+            background-color: white;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 40px 50px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            position: relative;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .header h2 {
+            margin: 5px 0;
+            font-size: 18px;
+            text-transform: uppercase;
+        }
+
+        .header p {
+            margin: 2px 0;
+            font-weight: bold;
+        }
+
+        .contract-title {
+            text-align: center;
+            margin-top: 30px;
+            margin-bottom: 20px;
+        }
+
+        .contract-title h1 {
+            font-size: 20px;
+            margin-bottom: 5px;
+        }
+
+        .contract-id {
+            text-align: right;
+            font-size: 14px;
+        }
+
+        .section-title {
+            font-weight: bold;
+            text-decoration: underline;
+            margin-top: 15px;
+            display: block;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+            font-size: 14px;
+        }
+
+        table,
+        th,
+        td {
+            border: 1px solid black;
+        }
+
+        th,
+        td {
+            padding: 8px;
+            text-align: center;
+        }
+
+        .info-grid {
+            margin-bottom: 10px;
+        }
+
+        .info-item {
+            margin-bottom: 5px;
+        }
+
+        .footer-sign {
+            margin-top: 40px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .sign-box {
+            text-align: center;
+            width: 45%;
+        }
+
+        .stamp-area {
+            height: 100px;
+            color: #ccc;
+            font-style: italic;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        @media print {
+            body {
+                background-color: white;
+                padding: 0;
+            }
+
+            .contract-container {
+                box-shadow: none;
+                margin: 0;
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="contract-container">
+        <div class="contract-id">Số: HĐ-DD-MM-YYYY-ZZZZZ</div>
+        <div class="header">
+            <h2>CỘNG HOÀ XÃ HỘI CHỦ NGHĨA VIỆT NAM</h2>
+            <p>Độc lập - Tự do - Hạnh phúc</p>
+            <div style="width: 150px; border-bottom: 1px solid black; margin: 5px auto;"></div>
+        </div>
+
+        <div class="contract-title">
+            <h1>HỢP ĐỒNG BÁN HÀNG TRẢ CHẬM KIÊM XÁC NHẬN THU TIỀN</h1>
+        </div>
+
+        <div class="info-grid">
+            <p><strong>Hôm nay, ngày DD/MM/YYYY tại địa điểm:</strong></p>
+            <p>154 Nguyễn Thuỵ, Phường Nghĩa Lộ, Quảng Ngãi, Việt Nam</p>
+
+            <p><strong>Chúng tôi gồm có:</strong></p>
+
+            <div class="info-item">
+                <strong>Bên A (Bên bán): Doanh nghiệp tư nhân vàng bạc Hoa Tùng</strong><br>
+                Đại diện: Ông Bùi Tấn Anh Thảo - Chủ doanh nghiệp<br>
+                Địa chỉ: Số 209 Nguyễn Thụy, Nghĩa Lộ, Quảng Ngãi<br>
+                Ngân hàng: Vietcombank - DNTN Hiệu Vàng Hoa Tùng | Số TK: 1047400973
+            </div>
+
+            <div class="info-item" style="margin-top: 15px;">
+                <strong>Bên B (Bên mua):</strong>
+                .....................................................................................................<br>
+                CCCD/Hộ chiếu số: ...................................... Ngày cấp: .................... Nơi cấp: CCS<br>
+                Địa chỉ thường trú:
+                ...................................................................................................<br>
+                Điện thoại:
+                ................................................................................................................
+            </div>
+        </div>
+
+        <p>Sau khi thoả thuận cùng nhau ký kết hợp đồng mua hàng với các điều khoản sau:</p>
+
+        <span class="section-title">Điều 1: Số lượng giao dịch: Bên B đồng ý mua của bên A chi tiết như sau:</span>
+        <table>
+            <thead>
+                <tr>
+                    <th>STT</th>
+                    <th>Tên hàng</th>
+                    <th>HL vàng/bạc</th>
+                    <th>SL(cái)</th>
+                    <th>KL/1SP (chỉ)</th>
+                    <th>Tổng KL (chỉ)</th>
+                    <th>Đơn giá/chỉ (VND)</th>
+                    <th>Thành tiền (VND)</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>1</td>
+                    <td>Bạc Ancarat 999 5L</td>
+                    <td>999</td>
+                    <td>2</td>
+                    <td>50.000</td>
+                    <td>100.000</td>
+                    <td>360,200</td>
+                    <td>36,020,000</td>
+                </tr>
+                <tr style="font-weight: bold;">
+                    <td colspan="3">Tổng cộng:</td>
+                    <td>2</td>
+                    <td></td>
+                    <td>100.000</td>
+                    <td></td>
+                    <td>36,020,000</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <p><strong>Thành tiền (bằng chữ):</strong> Ba mươi sáu triệu không trăm hai mươi nghìn đồng.</p>
+
+        <span class="section-title">Điều 2: Thời hạn giao hàng và phương thức thanh toán:</span>
+        <ul>
+            <li><strong>Phương thức chốt giá:</strong> Đơn giá bán được xác định vào thời điểm HH:MM ngày DD/MM/YYYY sau
+                khi hai bên đạt được thỏa thuận qua hình thức: Trực tiếp</li>
+            <li><strong>Phương thức thanh toán:</strong> Bên B giao cho bên A 100% tổng số tiền của hợp đồng khi hợp
+                đồng này được lập.</li>
+            <li><strong>Thời hạn giao hàng:</strong> Bên A trả hàng cho bên B vào <strong>sau 100 ngày</strong> (Quý
+                khách phải mang theo CCCD).</li>
+        </ul>
+
+        <span class="section-title">Điều 3: Những cam kết chung:</span>
+        <ol>
+            <li>Bên A chỉ trả hàng cho bên B khi bên B xuất trình CCCD/hộ chiếu có thông tin ghi đúng như trong hợp đồng
+                này.</li>
+            <li>Bên A có trách nhiệm trả hàng đúng thời hạn cam kết.</li>
+            <li>Bên A chỉ trả hàng cho chính chủ, không giải quyết các trường hợp lấy hộ.</li>
+        </ol>
+
+        <span class="section-title">Điều 4: Hiệu lực thỏa thuận:</span>
+        <p>Hợp đồng có giá trị kể từ ngày ký và tự động hết hiệu lực khi hai bên hoàn tất nghĩa vụ giao nhận.</p>
+
+        <div class="footer-sign">
+            <div class="sign-box">
+                <strong>BÊN B</strong><br>
+                (Ký, ghi rõ họ tên)
+            </div>
+            <div class="sign-box">
+                <strong>BÊN A</strong><br>
+                (Ký tên và đóng dấu)
+                <div class="stamp-area">(Đã thu tiền)</div>
+            </div>
+        </div>
+    </div>
+
+</body>
+
+</html>

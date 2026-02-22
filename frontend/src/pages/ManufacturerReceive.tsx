@@ -15,8 +15,12 @@ interface Product {
     status: string;
     last_price: number;
     store_id: number;
+    is_ordered?: boolean;
     is_delivered?: boolean;
     customer_name?: string;
+    store_name?: string;
+    store?: Store;
+    received_date?: string;
 }
 
 interface TransactionItem {
@@ -53,6 +57,7 @@ interface ReceiveItem {
     price: number;
     selected: boolean;
     customer_name?: string;
+    store_name?: string;
 }
 
 export function ManufacturerReceive() {
@@ -110,11 +115,18 @@ export function ManufacturerReceive() {
 
     const selectOrder = (order: Transaction) => {
         setSelectedOrder(order);
-        // Only include items not yet received, not sold back, and not fulfilled
+        // Strict filtering: 
+        // - 'Đã đặt hàng'
+        // - 'Đã bán' AND is_ordered (Customer deposit that was ordered from manufacturer)
+        // - 'Có sẵn' AND is_ordered (Store inventory ordered from manufacturer)
         const items: ReceiveItem[] = order.items
             .filter(item => {
                 const status = item.product?.status ?? '';
-                return status !== 'Đã nhận hàng NSX' && status !== 'Đã bán lại NSX' && status !== 'Đã giao';
+                const isOrdered = item.product?.is_ordered === true;
+
+                return status === 'Đã đặt hàng' ||
+                    (status === 'Đã bán' && isOrdered) ||
+                    (status === 'Có sẵn' && isOrdered);
             })
             .map(item => ({
                 product_id: item.product_id,
@@ -122,7 +134,8 @@ export function ManufacturerReceive() {
                 product_type: item.product.product_type,
                 price: item.price_at_time,
                 selected: true,
-                customer_name: item.product?.customer_name ?? undefined
+                customer_name: item.product?.customer_name ?? undefined,
+                store_name: item.product?.store?.name ?? undefined
             }));
         setReceiveItems(items);
     };
@@ -176,9 +189,15 @@ export function ManufacturerReceive() {
         return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
     };
 
-    // Check if ALL products in order have been received
-    const isFullyReceived = (order: Transaction): boolean => {
-        return order.items.every(item => item.product.status === 'Đã nhận hàng NSX');
+    // Check if there are any items that CAN be received 
+    const hasReceivableItems = (order: Transaction): boolean => {
+        return order.items.some(item => {
+            const status = item.product?.status ?? '';
+            const isOrdered = item.product?.is_ordered === true;
+            return status === 'Đã đặt hàng' ||
+                (status === 'Đã bán' && isOrdered) ||
+                (status === 'Có sẵn' && isOrdered);
+        });
     };
 
     return (
@@ -189,7 +208,10 @@ export function ManufacturerReceive() {
                     <Button variant="ghost" onClick={() => navigate('/dashboard')}>
                         <ArrowLeft className="h-5 w-5" />
                     </Button>
-                    <h1 className="text-3xl font-bold text-gray-900">Nhận hàng NSX</h1>
+                    <h1 className="text-3xl font-bold text-gray-900">
+                        <PackageCheck className="inline-block mr-2 h-8 w-8 text-orange-600" />
+                        Nhận hàng NSX
+                    </h1>
                 </div>
 
                 {/* Date Filter */}
@@ -233,16 +255,16 @@ export function ManufacturerReceive() {
                             ) : (
                                 <div className="space-y-3 max-h-[600px] overflow-y-auto">
                                     {mfrOrders.map((order) => {
-                                        const fullyReceived = isFullyReceived(order);
+                                        const canReceive = hasReceivableItems(order);
                                         const isSelected = selectedOrder?.id === order.id;
 
                                         return (
                                             <div
                                                 key={order.id}
-                                                onClick={() => !fullyReceived && selectOrder(order)}
+                                                onClick={() => canReceive && selectOrder(order)}
                                                 className={`border rounded-lg p-4 transition-all
-                                                    ${fullyReceived
-                                                        ? 'opacity-50 cursor-not-allowed bg-green-50'
+                                                    ${!canReceive
+                                                        ? 'opacity-50 cursor-not-allowed bg-gray-50'
                                                         : 'cursor-pointer hover:border-green-400 hover:shadow-sm'}
                                                     ${isSelected ? 'border-green-500 bg-green-50 ring-2 ring-green-200' : ''}
                                                 `}
@@ -256,9 +278,9 @@ export function ManufacturerReceive() {
                                                                     {order.code}
                                                                 </span>
                                                             )}
-                                                            {fullyReceived && (
-                                                                <span className="bg-green-100 text-green-700 px-2 py-0.5 rounded text-xs font-medium">
-                                                                    Đã nhận đủ
+                                                            {!canReceive && (
+                                                                <span className="bg-gray-100 text-gray-600 px-2 py-0.5 rounded text-xs font-medium">
+                                                                    Đã xử lý xong
                                                                 </span>
                                                             )}
                                                         </div>
@@ -293,7 +315,11 @@ export function ManufacturerReceive() {
                                                             #{item.product_id}
                                                             {item.product.product_code && <span className="font-mono ml-1 text-[10px] text-gray-500">({item.product.product_code})</span>}
                                                             {' '}{item.product.product_type}
-                                                            {item.product.status === 'Đã nhận hàng NSX' && ' ✓'}
+                                                            {item.product.status === 'Đã nhận hàng NSX' && (
+                                                                <span className="ml-1 font-medium">
+                                                                    ✓ {item.product.received_date ? `(${formatTime(item.product.received_date)} ${formatDate(item.product.received_date)})` : ''}
+                                                                </span>
+                                                            )}
                                                         </span>
                                                     ))}
                                                 </div>
@@ -361,7 +387,7 @@ export function ManufacturerReceive() {
                                     <CardContent>
                                         {receiveItems.length === 0 ? (
                                             <p className="text-gray-500 text-center py-4">
-                                                Tất cả sản phẩm trong đơn này đã được nhận.
+                                                Không có sản phẩm nào hợp lệ (chưa nhận hàng) để xử lý.
                                             </p>
                                         ) : (
                                             <div className="space-y-3">
@@ -371,6 +397,7 @@ export function ManufacturerReceive() {
                                                             <th className="px-3 py-2 text-center w-12">Chọn</th>
                                                             <th className="px-3 py-2 text-left">SP</th>
                                                             <th className="px-3 py-2 text-left">Loại</th>
+                                                            <th className="px-3 py-2 text-left">Cửa hàng nhận</th>
                                                             <th className="px-3 py-2 text-left">Khách hàng nhận</th>
                                                         </tr>
                                                     </thead>
@@ -395,6 +422,9 @@ export function ManufacturerReceive() {
                                                                 </td>
                                                                 <td className="px-3 py-2">{item.product_type}</td>
                                                                 <td className="px-3 py-2 text-gray-700">
+                                                                    {item.store_name || '-'}
+                                                                </td>
+                                                                <td className="px-3 py-2 text-gray-700">
                                                                     {item.customer_name || '—'}
                                                                 </td>
                                                             </tr>
@@ -412,6 +442,7 @@ export function ManufacturerReceive() {
                                         <CardContent className="p-4">
                                             <div className="flex gap-2">
                                                 <Button
+                                                    type="button"
                                                     variant="outline"
                                                     className="flex-1"
                                                     onClick={() => {
@@ -423,6 +454,7 @@ export function ManufacturerReceive() {
                                                     Hủy
                                                 </Button>
                                                 <Button
+                                                    type="button"
                                                     className="flex-1 bg-green-600 hover:bg-green-700"
                                                     onClick={handleSubmit}
                                                     disabled={submitting || selectedItems.length === 0}

@@ -4,7 +4,7 @@ import axios from 'axios';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
-import { Trash } from 'lucide-react';
+import { Trash, ArrowLeft, ShoppingCart } from 'lucide-react';
 import { nowHanoiLocal, hanoiToISO } from '../lib/dateUtils';
 
 // Types
@@ -27,7 +27,8 @@ export function NewOrder() {
     const [isCreatingCustomer, setIsCreatingCustomer] = useState(false);
     const [newCustomer, setNewCustomer] = useState({ name: '', phone_number: '', cccd: '', address: '' });
 
-    const [paymentMethod, setPaymentMethod] = useState<'cash' | 'bank_transfer'>('cash');
+    const [paymentMethod, setPaymentMethod] = useState<'cash' | 'bank_transfer' | 'mixed'>('cash');
+    const [cashAmount, setCashAmount] = useState<number>(0);
     const [orderItems, setOrderItems] = useState<OrderItem[]>([]);
 
     // New Item State
@@ -146,6 +147,12 @@ export function NewOrder() {
             return;
         }
 
+        const bankAmount = totalAmount - cashAmount;
+        if (paymentMethod === 'mixed' && (cashAmount < 0 || bankAmount < 0)) {
+            alert("Số tiền mặt hoặc chuyển khoản không hợp lệ");
+            return;
+        }
+
         try {
             const payload = {
                 staff_id: 1, // HARDCODED for now as AuthContext lacks ID
@@ -153,7 +160,9 @@ export function NewOrder() {
                 store_id: selectedStore,
                 items: orderItems,
                 created_at: hanoiToISO(selectedDate),
-                payment_method: paymentMethod
+                payment_method: paymentMethod,
+                cash_amount: paymentMethod === 'cash' ? totalAmount : (paymentMethod === 'mixed' ? cashAmount : 0),
+                bank_transfer_amount: paymentMethod === 'bank_transfer' ? totalAmount : (paymentMethod === 'mixed' ? bankAmount : 0)
             };
             console.log("Submitting:", payload);
             await axios.post('/api/v1/transactions/order', payload);
@@ -168,25 +177,39 @@ export function NewOrder() {
     return (
         <div className="min-h-screen bg-gray-50 p-6">
             <div className="max-w-4xl mx-auto space-y-6">
-                <h1 className="text-3xl font-bold text-gray-900">Create New Order</h1>
+                <div className="flex items-center gap-4">
+                    <Button variant="ghost" onClick={() => navigate('/dashboard')}>
+                        <ArrowLeft className="h-5 w-5" />
+                    </Button>
+                    <h1 className="text-3xl font-bold text-gray-900">
+                        <ShoppingCart className="inline-block mr-2 h-8 w-8 text-blue-600" />
+                        Tạo đơn hàng mới
+                    </h1>
+                </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {/* Store & Date */}
                     <Card>
-                        <CardHeader><CardTitle>Store & Date</CardTitle></CardHeader>
+                        <CardHeader><CardTitle>Cửa hàng & Ngày</CardTitle></CardHeader>
                         <CardContent className="space-y-4">
                             <div>
-                                <label className="block text-sm font-medium mb-1">Store</label>
+                                <label className="block text-sm font-medium mb-1">Cửa hàng</label>
                                 <select
                                     className="w-full rounded-md border border-gray-300 p-2"
                                     value={selectedStore}
-                                    onChange={(e) => setSelectedStore(Number(e.target.value))}
+                                    onChange={(e) => {
+                                        setSelectedStore(Number(e.target.value));
+                                        setSelectedAvailableProduct(null); // Reset product selection when store changes
+                                    }}
                                 >
                                     {stores.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                                 </select>
                             </div>
                             <div>
-                                <label className="block text-sm font-medium mb-1">Date</label>
+                                <div className="flex justify-between mb-1">
+                                    <label className="block text-sm font-medium">Ngày Giờ</label>
+                                    <span className="text-xs text-gray-500">VD: AM (Sáng), PM (Chiều/Tối)</span>
+                                </div>
                                 <Input
                                     type="datetime-local"
                                     value={selectedDate}
@@ -198,14 +221,14 @@ export function NewOrder() {
 
                     {/* Customer */}
                     <Card>
-                        <CardHeader><CardTitle>Customer</CardTitle></CardHeader>
+                        <CardHeader><CardTitle>Khách hàng</CardTitle></CardHeader>
                         <CardContent className="space-y-4">
                             {!isCreatingCustomer ? (
                                 <>
                                     <div>
-                                        <label className="block text-sm font-medium mb-1">Search Customer</label>
+                                        <label className="block text-sm font-medium mb-1">Tìm kiếm khách hàng</label>
                                         <Input
-                                            placeholder="Name or Phone..."
+                                            placeholder="Nhập tên, số điện thoại, CCCD..."
                                             value={searchCustomer}
                                             onChange={(e) => {
                                                 setSearchCustomer(e.target.value);
@@ -227,7 +250,7 @@ export function NewOrder() {
                                                     </div>
                                                 ))}
                                                 {filteredCustomers.length === 0 && (
-                                                    <div className="p-2 text-gray-500">No customers found.</div>
+                                                    <div className="p-2 text-gray-500">Không tìm thấy khách hàng.</div>
                                                 )}
                                             </div>
                                         )}
@@ -251,7 +274,7 @@ export function NewOrder() {
                             )}
                             {selectedCustomer && (
                                 <div className="bg-green-50 p-2 rounded text-green-800 text-sm">
-                                    Selected: <strong>{selectedCustomer.name}</strong> ({selectedCustomer.phone_number})
+                                    Thông tin KH đã chọn: <strong>{selectedCustomer.name}</strong> - SĐT: {selectedCustomer.phone_number} - CCCD: {selectedCustomer.cccd}
                                 </div>
                             )}
                         </CardContent>
@@ -260,7 +283,7 @@ export function NewOrder() {
 
                 {/* Items */}
                 <Card>
-                    <CardHeader><CardTitle>Items</CardTitle></CardHeader>
+                    <CardHeader><CardTitle>Sản phẩm</CardTitle></CardHeader>
                     <CardContent className="space-y-4">
                         {/* Mode Selection */}
                         <div className="flex gap-4 mb-4">
@@ -322,17 +345,17 @@ export function NewOrder() {
                                         }}
                                     >
                                         <option value="">-- Chọn sản phẩm --</option>
-                                        {availableProducts.map(p => (
-                                            <option key={p.id} value={p.id}>
-                                                #{p.id} {p.product_type} - {p.store_name || 'N/A'} - {p.last_price?.toLocaleString()} VND
-                                            </option>
-                                        ))}
+                                        {availableProducts
+                                            .filter(p => !selectedStore || p.store_id === selectedStore)
+                                            .map(p => (
+                                                <option key={p.id} value={p.id}>
+                                                    #{p.id} {p.product_type} - {p.store_name || 'N/A'} - {p.last_price?.toLocaleString()} VND
+                                                </option>
+                                            ))}
                                     </select>
                                     {selectedAvailableProduct && (
                                         <div className="mt-2 text-sm text-blue-600">
-                                            Đã chọn: #{selectedAvailableProduct.id} {selectedAvailableProduct.product_type}
-                                            | Cửa hàng: {selectedAvailableProduct.store_name}
-                                            | Giá cuối: {selectedAvailableProduct.last_price?.toLocaleString()} VND
+                                            Đã chọn: Sản phẩm số #{selectedAvailableProduct.id} | Loại: {selectedAvailableProduct.product_type} | Cửa hàng: {selectedAvailableProduct.store_name} | Giá cuối: {selectedAvailableProduct.last_price?.toLocaleString()} VND
                                         </div>
                                     )}
                                 </div>
@@ -345,7 +368,7 @@ export function NewOrder() {
                                     onChange={(e) => setNewItemParams({ ...newItemParams, price: Number(e.target.value) })}
                                 />
                             </div>
-                            <Button onClick={addItem}>Add Item</Button>
+                            <Button onClick={addItem}>Thêm sản phẩm này vào đơn</Button>
                         </div>
 
                         {orderItems.length > 0 && (
@@ -392,7 +415,7 @@ export function NewOrder() {
                 {/* Payment & Submit */}
                 <Card>
                     <CardContent className="p-6">
-                        <div className="flex justify-between items-center mb-6">
+                        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
                             <div>
                                 <label className="block text-sm font-medium mb-2">Phương thức thanh toán</label>
                                 <div className="flex gap-4">
@@ -414,7 +437,42 @@ export function NewOrder() {
                                         />
                                         <span>Chuyển khoản</span>
                                     </label>
+                                    <label className="flex items-center gap-2 cursor-pointer">
+                                        <input
+                                            type="radio"
+                                            name="payment"
+                                            checked={paymentMethod === 'mixed'}
+                                            onChange={() => {
+                                                setPaymentMethod('mixed');
+                                                setCashAmount(0); // Reset or set default
+                                            }}
+                                        />
+                                        <span>Tiền mặt + CK</span>
+                                    </label>
                                 </div>
+                                {paymentMethod === 'mixed' && (
+                                    <div className="mt-4 flex gap-4 items-center bg-gray-50 p-3 rounded border">
+                                        <div>
+                                            <label className="block text-xs font-medium mb-1">Tiền mặt</label>
+                                            <Input
+                                                type="number"
+                                                value={cashAmount}
+                                                onChange={(e) => setCashAmount(Number(e.target.value))}
+                                                className="w-32"
+                                            />
+                                        </div>
+                                        <div className="text-xl font-bold text-gray-400">+</div>
+                                        <div>
+                                            <label className="block text-xs font-medium mb-1">Chuyển khoản (Auto)</label>
+                                            <Input
+                                                type="text"
+                                                value={(totalAmount - cashAmount).toLocaleString()}
+                                                disabled
+                                                className="w-32 bg-gray-100"
+                                            />
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                             <div className="text-right">
                                 <p className="text-sm text-gray-500">Tổng tiền</p>
@@ -422,7 +480,7 @@ export function NewOrder() {
                             </div>
                         </div>
 
-                        <Button className="w-full text-lg py-6" onClick={handleSubmit} disabled={orderItems.length === 0 || !selectedCustomer}>
+                        <Button type="button" className="w-full text-lg py-6" onClick={handleSubmit} disabled={orderItems.length === 0 || !selectedCustomer}>
                             Tạo đơn hàng
                         </Button>
                     </CardContent>

@@ -133,7 +133,7 @@ export function StoreList() {
                     <Card className="border-2 border-blue-500">
                         <CardHeader>
                             <CardTitle className="text-blue-600">
-                                Move Product #{selectedProduct.id}
+                                Chuyển kho cho SP số #{selectedProduct.id}
                             </CardTitle>
                         </CardHeader>
                         <CardContent>
@@ -148,7 +148,7 @@ export function StoreList() {
                                 </div>
                             )}
                             <div className="flex flex-wrap gap-2">
-                                <span className="text-sm font-medium py-2">Move to:</span>
+                                <span className="text-sm font-medium py-2">Chuyển đến:</span>
                                 {stores
                                     .filter(s => s.id !== selectedProduct.store_id)
                                     .map(store => (
@@ -169,7 +169,7 @@ export function StoreList() {
                                         setMoveError(null);
                                     }}
                                 >
-                                    Cancel
+                                    Hủy
                                 </Button>
                             </div>
                         </CardContent>

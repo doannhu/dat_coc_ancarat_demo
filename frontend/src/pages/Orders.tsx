@@ -1,8 +1,11 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
 import { Input } from '../components/ui/Input';
 import { Button } from '../components/ui/Button';
+import { ContractGenerator } from '../components/ContractGenerator';
+import { ArrowLeft } from 'lucide-react';
 import styles from './Orders.module.css';
 import { formatTime, todayHanoi, startOfMonthHanoi } from '../lib/dateUtils';
 
@@ -48,6 +51,8 @@ interface Transaction {
     created_at: string;
     transaction_code?: string;
     payment_method: string;
+    cash_amount?: number;
+    bank_transfer_amount?: number;
     items: TransactionItem[];
     customer?: Customer;
     store?: Store;
@@ -69,6 +74,7 @@ interface TransactionStats {
 }
 
 export const Orders = () => {
+    const navigate = useNavigate();
     const [orders, setOrders] = useState<Transaction[]>([]);
     const [stats, setStats] = useState<TransactionStats | null>(null);
     const [startDate, setStartDate] = useState<string>(startOfMonthHanoi());
@@ -110,8 +116,51 @@ export const Orders = () => {
 
     return (
         <div className={styles.container}>
-            <h1 className={styles.title}>Danh sách đơn hàng</h1>
+            <div className="flex items-center gap-4 mb-6">
+                <Button variant="ghost" onClick={() => navigate('/dashboard')}>
+                    <ArrowLeft className="h-5 w-5" />
+                </Button>
+                <h1 className={`${styles.title} mb-0`}>Danh sách đơn hàng</h1>
+            </div>
 
+            {/* Status Legend */}
+            <Card className="mb-6">
+                <CardHeader className="pb-3">
+                    <CardTitle className="text-sm font-medium">Chú thích trạng thái sản phẩm</CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-sm">
+                        <div className="flex items-start gap-2">
+                            <span className="bg-blue-100 text-blue-800 px-2 py-0.5 rounded text-xs font-semibold whitespace-nowrap min-w-[90px] text-center">Đã bán</span>
+                            <span className="text-gray-600 text-xs">Sản phẩm khách đã đặt</span>
+                        </div>
+                        <div className="flex items-start gap-2">
+                            <span className="bg-green-100 text-green-800 px-2 py-0.5 rounded text-xs font-semibold whitespace-nowrap min-w-[90px] text-center">Có sẵn</span>
+                            <span className="text-gray-600 text-xs">Đã đặt dư trong kho, sẵn sàng để bán</span>
+                        </div>
+                        <div className="flex items-start gap-2">
+                            <span className="bg-purple-100 text-purple-800 px-2 py-0.5 rounded text-xs font-semibold whitespace-nowrap min-w-[90px] text-center">Đã đặt hàng</span>
+                            <span className="text-gray-600 text-xs">Đã lên đơn đặt hàng với Ancarat</span>
+                        </div>
+                        <div className="flex items-start gap-2">
+                            <span className="bg-teal-100 text-teal-800 px-2 py-0.5 rounded text-xs font-semibold whitespace-nowrap min-w-[90px] text-center">Đã giao</span>
+                            <span className="text-gray-600 text-xs">Đã đưa hàng cho khách</span>
+                        </div>
+                        <div className="flex items-start gap-2">
+                            <span className="bg-red-100 text-red-800 px-2 py-0.5 rounded text-xs font-semibold whitespace-nowrap min-w-[90px] text-center">Đã bán lại NSX</span>
+                            <span className="text-gray-600 text-xs">Đã bán lại cho Ancarat</span>
+                        </div>
+                        <div className="flex items-start gap-2">
+                            <span className="bg-orange-100 text-orange-800 px-2 py-0.5 rounded text-xs font-semibold whitespace-nowrap min-w-[90px] text-center">Đã nhận hàng NSX</span>
+                            <span className="text-gray-600 text-xs">Đã về cửa hàng, chờ giao</span>
+                        </div>
+                        <div className="flex items-start gap-2">
+                            <span className="bg-indigo-100 text-indigo-800 px-2 py-0.5 rounded text-xs font-semibold whitespace-nowrap min-w-[90px] text-center">Mua lại</span>
+                            <span className="text-gray-600 text-xs">Đơn hàng mua lại từ khách</span>
+                        </div>
+                    </div>
+                </CardContent>
+            </Card>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
                 <Card>
@@ -139,11 +188,11 @@ export const Orders = () => {
                     <CardContent>
                         <div className="text-xs space-y-1">
                             <div className="flex justify-between">
-                                <span>Cash:</span>
+                                <span>Tiền mặt:</span>
                                 <span className="font-semibold">{formatCurrency(stats?.payment_method_stats?.cash || 0)}</span>
                             </div>
                             <div className="flex justify-between">
-                                <span>Bank:</span>
+                                <span>Chuyển khoản:</span>
                                 <span className="font-semibold">{formatCurrency(stats?.payment_method_stats?.bank_transfer || 0)}</span>
                             </div>
                         </div>
@@ -151,7 +200,7 @@ export const Orders = () => {
                 </Card>
                 <Card>
                     <CardHeader className="pb-2">
-                        <CardTitle className="text-sm font-medium">Phân tích cửa hàng</CardTitle>
+                        <CardTitle className="text-sm font-medium">Doanh thu theo cửa hàng</CardTitle>
                     </CardHeader>
                     <CardContent>
                         <div className="text-xs space-y-1 max-h-20 overflow-y-auto">
@@ -204,16 +253,17 @@ export const Orders = () => {
                                     <th className={styles.th}>Nhân viên</th>
                                     <th className={styles.th}>Sản phẩm</th>
                                     <th className={styles.th + " text-right"}>Tổng tiền</th>
+                                    <th className={styles.th}>Hợp đồng</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {loading ? (
                                     <tr>
-                                        <td colSpan={9} className={styles.loading}>Loading...</td>
+                                        <td colSpan={10} className={styles.loading}>Loading...</td>
                                     </tr>
                                 ) : orders.length === 0 ? (
                                     <tr>
-                                        <td colSpan={9} className={styles.loading}>Không có đơn hàng trong khoảng ngày này.</td>
+                                        <td colSpan={10} className={styles.loading}>Không có đơn hàng trong khoảng ngày này.</td>
                                     </tr>
                                 ) : (
                                     orders.map((order) => (
@@ -275,6 +325,9 @@ export const Orders = () => {
                                             </td>
                                             <td className={styles.totalMoney}>
                                                 {formatCurrency(calculateTotal(order.items))}
+                                            </td>
+                                            <td className={styles.td + " text-center"}>
+                                                <ContractGenerator order={order} />
                                             </td>
                                         </tr>
                                     ))

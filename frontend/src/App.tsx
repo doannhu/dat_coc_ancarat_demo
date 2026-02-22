@@ -14,6 +14,10 @@ import { SwapProducts } from './pages/SwapProducts';
 import { StoreList } from './pages/StoreList';
 import { Customers } from './pages/Customers';
 import { UsersPage } from './pages/Users';
+import { FinancialManagement } from './pages/FinancialManagement';
+import { EditOrderList } from './pages/EditOrderList';
+import { EditOrder } from './pages/EditOrder';
+import { EditManufacturerOrder } from './pages/EditManufacturerOrder';
 import { type ReactNode } from 'react';
 
 function PrivateRoute({ children }: { children: ReactNode }) {
@@ -128,6 +132,38 @@ function App() {
             element={
               <PrivateRoute>
                 <UsersPage />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/financial-management"
+            element={
+              <PrivateRoute>
+                <FinancialManagement />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/edit-orders"
+            element={
+              <PrivateRoute>
+                <EditOrderList />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/edit-order/:id"
+            element={
+              <PrivateRoute>
+                <EditOrder />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/edit-manufacturer-order/:id"
+            element={
+              <PrivateRoute>
+                <EditManufacturerOrder />
               </PrivateRoute>
             }
           />

@@ -25,6 +25,14 @@ async def get_transaction_stats(
     service: TransactionService = Depends(get_service)
 ):
     return await service.get_stats(start_date=start_date, end_date=end_date)
+
+@router.get("/financial-stats", response_model=transaction_schema.FinancialStats)
+async def get_financial_stats(
+    start_date: date,
+    end_date: date,
+    service: TransactionService = Depends(get_service)
+):
+    return await service.get_financial_stats(start_date=start_date, end_date=end_date)
 @router.get("/", response_model=List[transaction_schema.Transaction])
 async def read_transactions(
     skip: int = 0, 
@@ -128,3 +136,25 @@ async def create_swap(
         return await service.create_swap(swap_in=swap)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+@router.put("/order/{id}", response_model=transaction_schema.Transaction)
+async def update_order(
+    id: int,
+    order: transaction_schema.OrderUpdate,
+    service: TransactionService = Depends(get_service)
+):
+    try:
+        return await service.update_order(id=id, obj_in=order)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+@router.put("/manufacturer-order/{id}", response_model=transaction_schema.Transaction)
+async def update_manufacturer_order(
+    id: int,
+    order: transaction_schema.ManufacturerOrderUpdate,
+    service: TransactionService = Depends(get_service)
+):
+    try:
+        return await service.update_manufacturer_order(id=id, obj_in=order)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))

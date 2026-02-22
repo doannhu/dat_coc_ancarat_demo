@@ -52,6 +52,8 @@ class OrderCreate(BaseModel):
     items: List[OrderCreateItem]
     created_at: Optional[datetime] = None
     payment_method: Optional[str] = "cash"
+    cash_amount: Optional[float] = 0.0
+    bank_transfer_amount: Optional[float] = 0.0
 
 class ManufacturerOrderItem(BaseModel):
     product_id: Optional[int] = None # For existing
@@ -67,6 +69,23 @@ class ManufacturerOrderCreate(BaseModel):
     store_id: int
     items: List[ManufacturerOrderItem]
 
+class OrderUpdate(BaseModel):
+    customer_id: Optional[int] = None
+    store_id: Optional[int] = None
+    staff_id: Optional[int] = None
+    created_at: Optional[datetime] = None
+    payment_method: Optional[str] = None
+    cash_amount: Optional[float] = None
+    bank_transfer_amount: Optional[float] = None
+    transaction_code: Optional[str] = None
+
+class ManufacturerOrderUpdate(BaseModel):
+    code: Optional[str] = None
+    store_id: Optional[int] = None
+    staff_id: Optional[int] = None
+    created_at: Optional[datetime] = None
+    transaction_code: Optional[str] = None
+
 class TransactionInDBBase(TransactionBase):
     id: int
     created_at: datetime
@@ -81,6 +100,8 @@ class Transaction(TransactionInDBBase):
     code: Optional[str] = None  # Manufacturer order code (manual)
     transaction_code: Optional[str] = None  # Transaction code (auto-generated)
     payment_method: Optional[str] = None
+    cash_amount: float = 0.0
+    bank_transfer_amount: float = 0.0
 
 from typing import Dict
 
@@ -152,3 +173,9 @@ class SwapCreate(BaseModel):
     store_id: int
     note: Optional[str] = None
     created_at: Optional[datetime] = None
+
+class FinancialStats(BaseModel):
+    money_in: float
+    money_in_breakdown: Dict[str, float]
+    money_out: float
+    money_out_breakdown: Dict[str, float]

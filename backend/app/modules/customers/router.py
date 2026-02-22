@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.session import get_db
@@ -17,9 +17,10 @@ def get_service(db: AsyncSession = Depends(get_db)) -> CustomerService:
 async def read_customers(
     skip: int = 0, 
     limit: int = 100, 
+    search: Optional[str] = None,
     service: CustomerService = Depends(get_service)
 ):
-    return await service.get_customers(skip=skip, limit=limit)
+    return await service.get_customers(skip=skip, limit=limit, search=search)
 
 @router.post("/", response_model=customer_schema.CustomerInDBBase)
 async def create_customer(

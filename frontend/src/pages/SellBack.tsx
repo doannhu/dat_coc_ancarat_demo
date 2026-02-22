@@ -4,7 +4,7 @@ import axios from 'axios';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
 import { Input } from '../components/ui/Input';
 import { Button } from '../components/ui/Button';
-import { ArrowLeft, Package, Check, X, AlertTriangle, Info } from 'lucide-react';
+import { ArrowLeft, Package, Check, X, AlertTriangle, Info, RotateCcw } from 'lucide-react';
 import { formatDate, formatTime, formatDateTime, todayHanoi, nowHanoiLocal, hanoiToISO } from '../lib/dateUtils';
 
 // Types
@@ -137,12 +137,11 @@ export function SellBack() {
 
     const selectOrder = (order: Transaction) => {
         setSelectedOrder(order);
-        // Pre-populate sell-back items from order items
-        // Only include items where product is NOT already sold back (to manufacturer) and NOT fulfilled
+        // Strict filtering: Only items with 'Có sẵn' status can be sold back to manufacturer
         const items: SellBackItem[] = order.items
             .filter(item => {
                 const status = item.product?.status ?? '';
-                return status !== 'Đã bán lại NSX' && status !== 'Đã giao';
+                return status === 'Có sẵn';
             })
             .map(item => ({
                 product_id: item.product_id,
@@ -153,7 +152,7 @@ export function SellBack() {
             }));
         setSellBackItems(items);
 
-        // Fetch statuses
+        // Fetch statuses (still relevant for getting detailed info if needed, though strictly we know they are 'Có sẵn')
         const productIds = order.items.map(i => i.product_id);
         fetchStatusInfos(productIds);
     };
@@ -218,9 +217,9 @@ export function SellBack() {
         return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
     };
 
-    // Check if ALL products in order have been sold back
-    const isFullySoldBack = (order: Transaction): boolean => {
-        return order.items.every(item => item.product.status === 'Đã bán lại NSX');
+    // Check if there are any items that CAN be sold back (Status == 'Có sẵn')
+    const hasSellableItems = (order: Transaction): boolean => {
+        return order.items.some(item => item.product.status === 'Có sẵn');
     };
 
     return (
@@ -231,7 +230,10 @@ export function SellBack() {
                     <Button variant="ghost" onClick={() => navigate('/dashboard')}>
                         <ArrowLeft className="h-5 w-5" />
                     </Button>
-                    <h1 className="text-3xl font-bold text-gray-900">Bán lại NSX</h1>
+                    <h1 className="text-3xl font-bold text-gray-900">
+                        <RotateCcw className="inline-block mr-2 h-8 w-8 text-pink-600" />
+                        Bán lại NSX
+                    </h1>
                 </div>
 
                 {/* Date Filter */}
@@ -275,15 +277,15 @@ export function SellBack() {
                             ) : (
                                 <div className="space-y-3 max-h-[600px] overflow-y-auto">
                                     {mfrOrders.map((order) => {
-                                        const fullySoldBack = isFullySoldBack(order);
+                                        const canSell = hasSellableItems(order);
                                         const isSelected = selectedOrder?.id === order.id;
 
                                         return (
                                             <div
                                                 key={order.id}
-                                                onClick={() => !fullySoldBack && selectOrder(order)}
+                                                onClick={() => canSell && selectOrder(order)}
                                                 className={`border rounded-lg p-4 transition-all
-                                                    ${fullySoldBack
+                                                    ${!canSell
                                                         ? 'opacity-50 cursor-not-allowed bg-gray-100'
                                                         : 'cursor-pointer hover:border-purple-400 hover:shadow-sm'}
                                                     ${isSelected ? 'border-purple-500 bg-purple-50 ring-2 ring-purple-200' : ''}
@@ -298,9 +300,9 @@ export function SellBack() {
                                                                     {order.code}
                                                                 </span>
                                                             )}
-                                                            {fullySoldBack && (
-                                                                <span className="bg-red-100 text-red-700 px-2 py-0.5 rounded text-xs font-medium">
-                                                                    Đã bán lại NSX
+                                                            {!canSell && (
+                                                                <span className="bg-gray-100 text-gray-600 px-2 py-0.5 rounded text-xs font-medium">
+                                                                    Đã hoàn thành
                                                                 </span>
                                                             )}
                                                         </div>
@@ -403,7 +405,7 @@ export function SellBack() {
                                     <CardContent>
                                         {sellBackItems.length === 0 ? (
                                             <p className="text-gray-500 text-center py-4">
-                                                Tất cả sản phẩm trong đơn này đã được bán lại.
+                                                Không có sản phẩm nào ở trạng thái 'Có sẵn' để bán lại.
                                             </p>
                                         ) : (
                                             <div className="space-y-3">
