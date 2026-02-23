@@ -288,7 +288,10 @@ export function ContractGenerator({ order }: ContractGeneratorProps) {
                                     {/* Title */}
                                     <div style={{ textAlign: 'center', marginTop: '30px', marginBottom: '20px' }}>
                                         <h1 style={{ fontSize: '20px', marginBottom: '5px', fontWeight: 'bold' }}>
-                                            HỢP ĐỒNG BÁN HÀNG TRẢ CHẬM KIÊM XÁC NHẬN THU TIỀN
+                                            HỢP ĐỒNG BÁN HÀNG TRẢ CHẬM
+                                        </h1>
+                                        <h1 style={{ fontSize: '20px', marginBottom: '5px', fontWeight: 'bold' }}>
+                                            KIÊM XÁC NHẬN THU TIỀN
                                         </h1>
                                     </div>
 
@@ -300,7 +303,7 @@ export function ContractGenerator({ order }: ContractGeneratorProps) {
                                         <p><strong>Chúng tôi gồm có:</strong></p>
 
                                         <div style={{ marginBottom: '5px' }}>
-                                            <strong>Bên A (Bên bán): Doanh nghiệp tư nhân vàng bạc Hoa Tùng</strong><br />
+                                            <strong>Bên A (Bên bán): Doanh nghiệp Tư nhân Vàng Bạc Hoa Tùng</strong><br />
                                             Đại diện: Ông Bùi Tấn Anh Thảo - Chủ doanh nghiệp<br />
                                             Địa chỉ: Số 209 Nguyễn Thụy, Nghĩa Lộ, Quảng Ngãi<br />
                                             Ngân hàng: Vietcombank - DNTN Hiệu Vàng Hoa Tùng | Số TK: 1047400973
@@ -418,7 +421,7 @@ export function ContractGenerator({ order }: ContractGeneratorProps) {
                                         </li>
                                         <li>
                                             <strong>Thời hạn giao hàng:</strong> Bên A trả hàng cho bên B vào <strong>sau 100 ngày</strong> (Quý
-                                            khách phải mang theo CCCD).
+                                            khách phải mang theo CCCD/VNeID).
                                         </li>
                                     </ul>
 
@@ -427,7 +430,7 @@ export function ContractGenerator({ order }: ContractGeneratorProps) {
                                         Điều 3: Những cam kết chung:
                                     </span>
                                     <ol style={{ paddingLeft: '20px' }}>
-                                        <li>Bên A chỉ trả hàng cho bên B khi bên B xuất trình CCCD/hộ chiếu có thông tin ghi đúng như trong hợp đồng này.</li>
+                                        <li>Bên A chỉ trả hàng cho bên B khi bên B xuất trình CCCD/VNeID có thông tin ghi đúng như trong hợp đồng này.</li>
                                         <li>Bên A có trách nhiệm trả hàng đúng thời hạn cam kết.</li>
                                         <li>Bên A chỉ trả hàng cho chính chủ, không giải quyết các trường hợp lấy hộ.</li>
                                     </ol>

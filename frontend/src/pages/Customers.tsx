@@ -92,7 +92,7 @@ export function Customers() {
                             <table className="w-full text-sm text-left">
                                 <thead className="bg-gray-100 text-gray-700 font-medium">
                                     <tr>
-                                        <th className="p-3">ID</th>
+                                        <th className="p-3">STT</th>
                                         <th className="p-3">Tên</th>
                                         <th className="p-3">Số điện thoại</th>
                                         <th className="p-3">CCCD</th>

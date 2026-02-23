@@ -28,21 +28,17 @@ export function FinancialManagement() {
     const [startDate, setStartDate] = useState(todayHanoi());
     const [endDate, setEndDate] = useState(todayHanoi());
     const [stats, setStats] = useState<FinancialStats | null>(null);
-    const [loading, setLoading] = useState(false);
 
     useEffect(() => {
         fetchStats();
     }, [startDate, endDate]);
 
     const fetchStats = async () => {
-        setLoading(true);
         try {
             const res = await axios.get(`/api/v1/transactions/financial-stats?start_date=${startDate}&end_date=${endDate}`);
             setStats(res.data);
         } catch (error) {
             console.error("Failed to fetch financial stats", error);
-        } finally {
-            setLoading(false);
         }
     };
 

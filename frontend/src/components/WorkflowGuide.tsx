@@ -1,4 +1,4 @@
-import { ChevronDown, MoveRight, CornerDownRight, ArrowRight, ArrowDown } from 'lucide-react';
+import { MoveRight, ArrowRight, ArrowDown } from 'lucide-react';
 import { motion, type Variants } from 'framer-motion';
 
 interface StepProps {

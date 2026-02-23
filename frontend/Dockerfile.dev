@@ -1,0 +1,16 @@
+FROM node:20-alpine
+
+WORKDIR /app
+
+# Copy package files and install dependencies
+COPY package.json package-lock.json ./
+RUN npm install
+
+# Copy application files (we still copy this so node_modules gets populated properly)
+COPY . .
+
+# Expose Vite's default port
+EXPOSE 5173
+
+# Run Vite in host mode so docker can expose the port
+CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0"]

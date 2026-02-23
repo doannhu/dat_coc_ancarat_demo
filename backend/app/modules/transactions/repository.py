@@ -250,24 +250,41 @@ class TransactionRepository:
 
     async def get_financial_stats(self, start_date: date, end_date: date):
         # Money In: SALE + SELL_BACK_MFR
-        async def get_sum(tx_types, payment_method=None):
+        async def get_sum(tx_types):
             query = select(func.sum(TransactionItem.price_at_time))\
                 .join(Transaction, TransactionItem.transaction_id == Transaction.id)\
                 .where(Transaction.type.in_(tx_types))\
                 .where(cast(Transaction.created_at, Date) >= start_date)\
                 .where(cast(Transaction.created_at, Date) <= end_date)
             
-            if payment_method:
-                 query = query.where(Transaction.payment_method == payment_method)
-                 
             return (await self.db.execute(query)).scalar() or 0.0
 
         sale_total = await get_sum([TransactionType.SALE])
         sell_back_mfr_total = await get_sum([TransactionType.SELL_BACK_MFR])
         
-        cash_in = await get_sum([TransactionType.SALE, TransactionType.SELL_BACK_MFR], "cash")
-        bank_in = await get_sum([TransactionType.SALE, TransactionType.SELL_BACK_MFR], "bank_transfer")
+        # Correctly evaluate cash_in and bank_in for mixed and legacy
+        query = select(Transaction)\
+            .where(Transaction.type.in_([TransactionType.SALE, TransactionType.SELL_BACK_MFR]))\
+            .where(cast(Transaction.created_at, Date) >= start_date)\
+            .where(cast(Transaction.created_at, Date) <= end_date)\
+            .options(selectinload(Transaction.items))
         
+        result = await self.db.execute(query)
+        transactions = result.scalars().all()
+        
+        cash_in = 0.0
+        bank_in = 0.0
+        
+        for t in transactions:
+            total_items_price = sum(item.price_at_time or 0.0 for item in t.items)
+            if t.payment_method == "mixed":
+                cash_in += t.cash_amount or 0.0
+                bank_in += t.bank_transfer_amount or 0.0
+            elif t.payment_method == "cash":
+                cash_in += total_items_price
+            elif t.payment_method == "bank_transfer":
+                bank_in += total_items_price
+
         # Money Out: BUYBACK + MANUFACTURER
         buyback_total = await get_sum([TransactionType.BUYBACK])
         manufacturer_order_total = await get_sum([TransactionType.MANUFACTURER])

@@ -39,5 +39,21 @@ services:
     depends_on:
       - db
 
+  frontend:
+    build: 
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    container_name: frontend_app
+    ports:
+      - "5173:5173"
+    volumes:
+      # Mount the source code into the container so local edits immediately trigger Vite HMR
+      - ./frontend:/app
+      # An anonymous volume for node_modules ensures that the container uses its own Linux-compatible node_modules 
+      # rather than syncing the Mac's node_modules directory which might cause architecture conflicts.
+      - /app/node_modules
+    depends_on:
+      - backend
+
 volumes:
   postgres_data:
