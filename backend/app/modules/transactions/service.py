@@ -111,7 +111,7 @@ class TransactionService:
                     # Create new product - from customer order, not yet ordered from manufacturer
                     prod_in = product_schemas.ProductCreate(
                         product_type=item.product_type,
-                        product_code=await self.product_service.generate_product_code(item.product_type),
+                        product_code=await self.product_service.generate_product_code(item.product_type, tx_created),
                         status=ProductStatus.SOLD,
                         last_price=price,
                         store_id=order_in.store_id,
@@ -204,7 +204,7 @@ class TransactionService:
                 for i in range(qty):
                     prod_in = product_schemas.ProductCreate(
                         product_type=item.product_type,
-                        product_code=await self.product_service.generate_product_code(item.product_type),
+                        product_code=await self.product_service.generate_product_code(item.product_type, tx_created),
                         status=ProductStatus.AVAILABLE,  # Default new items to 'Có sẵn'
                         last_price=item.manufacturer_price,
                         store_id=order_in.store_id,

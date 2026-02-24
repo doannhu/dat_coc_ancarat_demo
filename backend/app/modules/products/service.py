@@ -28,11 +28,11 @@ class ProductService:
                 
         return product
 
-    async def generate_product_code(self, product_type: str) -> str:
+    async def generate_product_code(self, product_type: str, created_at: Optional['datetime'] = None) -> str:
         # Format: XX-DD-MM-YYYY-ZZZZZ
         # XX: 1L (1 lượng), 5L (5 lượng), 1K (1 kg)
         from datetime import datetime
-        now = datetime.now()
+        now = created_at or datetime.now()
         date_str = now.strftime("%d-%m-%Y")
         
         type_map = {
