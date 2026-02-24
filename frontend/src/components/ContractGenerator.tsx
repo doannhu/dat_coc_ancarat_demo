@@ -3,6 +3,7 @@ import { useRef, useState } from 'react';
 import html2pdf from 'html2pdf.js';
 import { Button } from './ui/Button';
 import { FileText, Download, X } from 'lucide-react';
+import watermarkImg from '../assets/hoa_tung_watermark.png';
 
 // Types matching the Orders page
 interface Product {
@@ -269,199 +270,217 @@ export function ContractGenerator({ order }: ContractGeneratorProps) {
                                     lineHeight: 1.4,
                                     color: '#000',
                                     fontSize: '14px',
-                                    textAlign: 'left'
+                                    textAlign: 'left',
+                                    position: 'relative'
                                 }}>
-                                    {/* Contract ID */}
-                                    <div style={{ textAlign: 'right', fontSize: '14px' }}>
-                                        Số: {contractId}
-                                    </div>
-
-                                    {/* Header */}
-                                    <div style={{ textAlign: 'center', marginBottom: '20px' }}>
-                                        <h2 style={{ margin: '5px 0', fontSize: '18px', textTransform: 'uppercase', fontWeight: 'bold' }}>
-                                            CỘNG HOÀ XÃ HỘI CHỦ NGHĨA VIỆT NAM
-                                        </h2>
-                                        <p style={{ margin: '2px 0', fontWeight: 'bold' }}>Độc lập - Tự do - Hạnh phúc</p>
-                                        <div style={{ width: '150px', borderBottom: '1px solid black', margin: '5px auto' }}></div>
-                                    </div>
-
-                                    {/* Title */}
-                                    <div style={{ textAlign: 'center', marginTop: '30px', marginBottom: '20px' }}>
-                                        <h1 style={{ fontSize: '20px', marginBottom: '5px', fontWeight: 'bold' }}>
-                                            HỢP ĐỒNG BÁN HÀNG TRẢ CHẬM
-                                        </h1>
-                                        <h1 style={{ fontSize: '20px', marginBottom: '5px', fontWeight: 'bold' }}>
-                                            KIÊM XÁC NHẬN THU TIỀN
-                                        </h1>
-                                    </div>
-
-                                    {/* Info */}
-                                    <div style={{ marginBottom: '10px' }}>
-                                        <p><strong>Hôm nay, ngày {date.day}/{date.month}/{date.year} tại địa điểm:</strong></p>
-                                        <p>154 Nguyễn Thuỵ, Phường Nghĩa Lộ, Quảng Ngãi, Việt Nam</p>
-
-                                        <p><strong>Chúng tôi gồm có:</strong></p>
-
-                                        <div style={{ marginBottom: '5px' }}>
-                                            <strong>Bên A (Bên bán): Doanh nghiệp Tư nhân Vàng Bạc Hoa Tùng</strong><br />
-                                            Đại diện: Ông Bùi Tấn Anh Thảo - Chủ doanh nghiệp<br />
-                                            Địa chỉ: Số 209 Nguyễn Thụy, Nghĩa Lộ, Quảng Ngãi<br />
-                                            Ngân hàng: Vietcombank - DNTN Hiệu Vàng Hoa Tùng | Số TK: 1047400973
-                                        </div>
-
-                                        <div style={{ marginTop: '15px', marginBottom: '5px' }}>
-                                            <strong>Bên B (Bên mua):</strong>{' '}
-                                            {customer?.name || '.....................................................................................................'}<br />
-                                            CCCD/Hộ chiếu số: {customer?.cccd || '......................................'}{' '}
-                                            Ngày cấp: .................... Nơi cấp: CCS<br />
-                                            Địa chỉ thường trú:{' '}
-                                            {customer?.address || '...................................................................................................'}<br />
-                                            Điện thoại:{' '}
-                                            {customer?.phone_number || '................................................................................................................'}
-                                        </div>
-                                    </div>
-
-                                    <p>Sau khi thoả thuận cùng nhau ký kết hợp đồng mua hàng với các điều khoản sau:</p>
-
-                                    {/* Điều 1 */}
-                                    <span style={{ fontWeight: 'bold', textDecoration: 'underline', marginTop: '15px', display: 'block' }}>
-                                        Điều 1: Số lượng giao dịch: Bên B đồng ý mua của bên A chi tiết như sau:
-                                    </span>
-                                    <table style={{
-                                        width: '100%',
-                                        borderCollapse: 'collapse',
-                                        margin: '15px 0',
-                                        fontSize: '14px'
+                                    {/* Watermark Container */}
+                                    <div style={{
+                                        position: 'absolute',
+                                        top: 0, left: 0, right: 0, bottom: 0,
+                                        display: 'flex',
+                                        justifyContent: 'center',
+                                        alignItems: 'center',
+                                        zIndex: 0,
+                                        pointerEvents: 'none',
+                                        opacity: 0.15
                                     }}>
-                                        <thead>
-                                            <tr>
-                                                <th style={thStyle}>STT</th>
-                                                <th style={thStyle}>Tên hàng</th>
-                                                <th style={thStyle}>HL vàng/bạc</th>
-                                                <th style={thStyle}>SL(cái)</th>
-                                                <th style={thStyle}>KL/1SP (lượng/kg)</th>
-                                                <th style={thStyle}>Tổng KL (lượng/kg)</th>
-                                                <th style={thStyle}>Đơn giá/lượng (VND)</th>
-                                                <th style={thStyle}>Thành tiền (VND)</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {grouped.map((g, idx) => (
-                                                <tr key={idx}>
-                                                    <td style={tdStyle}>{idx + 1}</td>
-                                                    <td style={tdStyle}>{g.label}</td>
-                                                    <td style={tdStyle}>{g.purity}</td>
-                                                    <td style={tdStyle}>{g.quantity}</td>
-                                                    <td style={tdStyle}>
-                                                        {(g.productType.includes('1KG') || g.productType.includes('1 kg')) ? '1 KG' :
-                                                            (g.productType.includes('5L') || g.productType.includes('5 lượng')) ? '5 Lượng' :
-                                                                (g.productType.includes('1L') || g.productType.includes('1 lượng')) ? '1 Lượng' :
-                                                                    formatVND(g.weightPerUnit)}
-                                                    </td>
-                                                    <td style={tdStyle}>
-                                                        {(g.productType.includes('1KG') || g.productType.includes('1 kg')) ? `${g.quantity} KG` :
-                                                            (g.productType.includes('5L') || g.productType.includes('5 lượng')) ? `${g.quantity * 5} Lượng` :
-                                                                (g.productType.includes('1L') || g.productType.includes('1 lượng')) ? `${g.quantity} Lượng` :
-                                                                    formatVND(g.totalWeight)}
-                                                    </td>
-                                                    <td style={tdStyle}>{formatVND(g.pricePerUnit)}</td>
-                                                    <td style={tdStyle}>{formatVND(g.totalPrice)}</td>
-                                                </tr>
-                                            ))}
-                                            <tr style={{ fontWeight: 'bold' }}>
-                                                <td style={tdStyle} colSpan={3}>Tổng cộng:</td>
-                                                <td style={tdStyle}>{totalQty}</td>
-                                                <td style={tdStyle}></td>
-                                                <td style={tdStyle}>
-                                                    {(() => {
-                                                        let totalKg = 0;
-                                                        let totalLuong = 0;
-                                                        let otherWeight = 0;
+                                        <img src={watermarkImg} alt="Watermark" style={{ width: '80%', height: 'auto' }} />
+                                    </div>
 
-                                                        grouped.forEach(g => {
-                                                            if (g.productType.includes('1KG') || g.productType.includes('1 kg')) {
-                                                                totalKg += g.quantity;
-                                                            } else if (g.productType.includes('5L') || g.productType.includes('5 lượng')) {
-                                                                totalLuong += g.quantity * 5;
-                                                            } else if (g.productType.includes('1L') || g.productType.includes('1 lượng')) {
-                                                                totalLuong += g.quantity;
-                                                            } else {
-                                                                otherWeight += g.totalWeight;
-                                                            }
-                                                        });
-
-                                                        const parts = [];
-                                                        if (totalKg > 0) parts.push(`${totalKg} KG`);
-                                                        if (totalLuong > 0) parts.push(`${totalLuong} Lượng`);
-                                                        if (otherWeight > 0) parts.push(formatVND(otherWeight));
-
-                                                        return parts.length > 0 ? parts.join(', ') : formatVND(totalWeight);
-                                                    })()}
-                                                </td>
-                                                <td style={tdStyle}></td>
-                                                <td style={tdStyle}>{formatVND(totalPrice)}</td>
-                                            </tr>
-                                        </tbody>
-                                    </table>
-
-                                    <p><strong>Thành tiền (bằng chữ):</strong> {totalInWords}.</p>
-
-                                    {/* Điều 2 */}
-                                    <span style={{ fontWeight: 'bold', textDecoration: 'underline', marginTop: '15px', display: 'block' }}>
-                                        Điều 2: Thời hạn giao hàng và phương thức thanh toán:
-                                    </span>
-                                    <ul style={{ paddingLeft: '20px' }}>
-                                        <li>
-                                            <strong>Phương thức chốt giá:</strong> Đơn giá bán được xác định vào thời điểm {date.time} ngày {date.day}/{date.month}/{date.year} sau
-                                            khi hai bên đạt được thỏa thuận qua hình thức: Trực tiếp
-                                        </li>
-                                        <li>
-                                            <strong>Phương thức thanh toán:</strong> Bên B giao cho bên A 100% tổng số tiền của hợp đồng khi hợp
-                                            đồng này được lập.
-                                        </li>
-                                        <li>
-                                            <strong>Thời hạn giao hàng:</strong> Bên A trả hàng cho bên B vào <strong>sau 100 ngày</strong> (Quý
-                                            khách phải mang theo CCCD/VNeID).
-                                        </li>
-                                    </ul>
-
-                                    {/* Điều 3 */}
-                                    <span style={{ fontWeight: 'bold', textDecoration: 'underline', marginTop: '15px', display: 'block' }}>
-                                        Điều 3: Những cam kết chung:
-                                    </span>
-                                    <ol style={{ paddingLeft: '20px' }}>
-                                        <li>Bên A chỉ trả hàng cho bên B khi bên B xuất trình CCCD/VNeID có thông tin ghi đúng như trong hợp đồng này.</li>
-                                        <li>Bên A có trách nhiệm trả hàng đúng thời hạn cam kết.</li>
-                                        <li>Bên A chỉ trả hàng cho chính chủ, không giải quyết các trường hợp lấy hộ.</li>
-                                    </ol>
-
-                                    {/* Điều 4 */}
-                                    <span style={{ fontWeight: 'bold', textDecoration: 'underline', marginTop: '15px', display: 'block' }}>
-                                        Điều 4: Hiệu lực thỏa thuận:
-                                    </span>
-                                    <p>Hợp đồng có giá trị kể từ ngày ký và tự động hết hiệu lực khi hai bên hoàn tất nghĩa vụ giao nhận.</p>
-
-                                    {/* Signatures */}
-                                    <div style={{ marginTop: '40px', display: 'flex', justifyContent: 'space-between' }}>
-                                        <div style={{ textAlign: 'center', width: '45%' }}>
-                                            <strong>BÊN B</strong><br />
-                                            (Ký, ghi rõ họ tên)
+                                    {/* Content Container to ensure text stays above watermark */}
+                                    <div style={{ position: 'relative', zIndex: 1 }}>
+                                        {/* Contract ID */}
+                                        <div style={{ textAlign: 'right', fontSize: '14px' }}>
+                                            Số: {contractId}
                                         </div>
-                                        <div style={{ textAlign: 'center', width: '45%' }}>
-                                            <strong>BÊN A</strong><br />
-                                            (Ký tên và đóng dấu)
-                                            <div style={{
-                                                height: '100px',
-                                                color: '#ccc',
-                                                fontStyle: 'italic',
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                justifyContent: 'center'
-                                            }}>
-                                                (Đã thu tiền)
+
+                                        {/* Header */}
+                                        <div style={{ textAlign: 'center', marginBottom: '20px' }}>
+                                            <h2 style={{ margin: '5px 0', fontSize: '18px', textTransform: 'uppercase', fontWeight: 'bold' }}>
+                                                CỘNG HOÀ XÃ HỘI CHỦ NGHĨA VIỆT NAM
+                                            </h2>
+                                            <p style={{ margin: '2px 0', fontWeight: 'bold' }}>Độc lập - Tự do - Hạnh phúc</p>
+                                            <div style={{ width: '150px', borderBottom: '1px solid black', margin: '5px auto' }}></div>
+                                        </div>
+
+                                        {/* Title */}
+                                        <div style={{ textAlign: 'center', marginTop: '30px', marginBottom: '20px' }}>
+                                            <h1 style={{ fontSize: '20px', marginBottom: '5px', fontWeight: 'bold' }}>
+                                                HỢP ĐỒNG BÁN HÀNG TRẢ CHẬM
+                                            </h1>
+                                            <h1 style={{ fontSize: '20px', marginBottom: '5px', fontWeight: 'bold' }}>
+                                                KIÊM XÁC NHẬN THU TIỀN
+                                            </h1>
+                                        </div>
+
+                                        {/* Info */}
+                                        <div style={{ marginBottom: '10px' }}>
+                                            <p><strong>Hôm nay, ngày {date.day}/{date.month}/{date.year} tại địa điểm:</strong></p>
+                                            <p>154 Nguyễn Thuỵ, Phường Nghĩa Lộ, Quảng Ngãi, Việt Nam</p>
+
+                                            <p><strong>Chúng tôi gồm có:</strong></p>
+
+                                            <div style={{ marginBottom: '5px' }}>
+                                                <strong>Bên A (Bên bán): Doanh nghiệp Tư nhân Vàng Bạc Hoa Tùng</strong><br />
+                                                Đại diện: Ông Bùi Tấn Anh Thảo - Chủ doanh nghiệp<br />
+                                                Địa chỉ: Số 209 Nguyễn Thụy, Nghĩa Lộ, Quảng Ngãi<br />
+                                                Ngân hàng: Vietcombank - DNTN Hiệu Vàng Hoa Tùng | Số TK: 1047400973
+                                            </div>
+
+                                            <div style={{ marginTop: '15px', marginBottom: '5px' }}>
+                                                <strong>Bên B (Bên mua):</strong>{' '}
+                                                {customer?.name || '.....................................................................................................'}<br />
+                                                CCCD/Hộ chiếu số: {customer?.cccd || '......................................'}{' '}
+                                                Ngày cấp: .................... Nơi cấp: CCS<br />
+                                                Địa chỉ thường trú:{' '}
+                                                {customer?.address || '...................................................................................................'}<br />
+                                                Điện thoại:{' '}
+                                                {customer?.phone_number || '................................................................................................................'}
                                             </div>
                                         </div>
-                                    </div>
+
+                                        <p>Sau khi thoả thuận cùng nhau ký kết hợp đồng mua hàng với các điều khoản sau:</p>
+
+                                        {/* Điều 1 */}
+                                        <span style={{ fontWeight: 'bold', textDecoration: 'underline', marginTop: '15px', display: 'block' }}>
+                                            Điều 1: Số lượng giao dịch: Bên B đồng ý mua của bên A chi tiết như sau:
+                                        </span>
+                                        <table style={{
+                                            width: '100%',
+                                            borderCollapse: 'collapse',
+                                            margin: '15px 0',
+                                            fontSize: '14px'
+                                        }}>
+                                            <thead>
+                                                <tr>
+                                                    <th style={thStyle}>STT</th>
+                                                    <th style={thStyle}>Tên hàng</th>
+                                                    <th style={thStyle}>HL vàng/bạc</th>
+                                                    <th style={thStyle}>SL(cái)</th>
+                                                    <th style={thStyle}>KL/1SP (lượng/kg)</th>
+                                                    <th style={thStyle}>Tổng KL (lượng/kg)</th>
+                                                    <th style={thStyle}>Đơn giá/lượng (VND)</th>
+                                                    <th style={thStyle}>Thành tiền (VND)</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {grouped.map((g, idx) => (
+                                                    <tr key={idx}>
+                                                        <td style={tdStyle}>{idx + 1}</td>
+                                                        <td style={tdStyle}>{g.label}</td>
+                                                        <td style={tdStyle}>{g.purity}</td>
+                                                        <td style={tdStyle}>{g.quantity}</td>
+                                                        <td style={tdStyle}>
+                                                            {(g.productType.includes('1KG') || g.productType.includes('1 kg')) ? '1 KG' :
+                                                                (g.productType.includes('5L') || g.productType.includes('5 lượng')) ? '5 Lượng' :
+                                                                    (g.productType.includes('1L') || g.productType.includes('1 lượng')) ? '1 Lượng' :
+                                                                        formatVND(g.weightPerUnit)}
+                                                        </td>
+                                                        <td style={tdStyle}>
+                                                            {(g.productType.includes('1KG') || g.productType.includes('1 kg')) ? `${g.quantity} KG` :
+                                                                (g.productType.includes('5L') || g.productType.includes('5 lượng')) ? `${g.quantity * 5} Lượng` :
+                                                                    (g.productType.includes('1L') || g.productType.includes('1 lượng')) ? `${g.quantity} Lượng` :
+                                                                        formatVND(g.totalWeight)}
+                                                        </td>
+                                                        <td style={tdStyle}>{formatVND(g.pricePerUnit)}</td>
+                                                        <td style={tdStyle}>{formatVND(g.totalPrice)}</td>
+                                                    </tr>
+                                                ))}
+                                                <tr style={{ fontWeight: 'bold' }}>
+                                                    <td style={tdStyle} colSpan={3}>Tổng cộng:</td>
+                                                    <td style={tdStyle}>{totalQty}</td>
+                                                    <td style={tdStyle}></td>
+                                                    <td style={tdStyle}>
+                                                        {(() => {
+                                                            let totalKg = 0;
+                                                            let totalLuong = 0;
+                                                            let otherWeight = 0;
+
+                                                            grouped.forEach(g => {
+                                                                if (g.productType.includes('1KG') || g.productType.includes('1 kg')) {
+                                                                    totalKg += g.quantity;
+                                                                } else if (g.productType.includes('5L') || g.productType.includes('5 lượng')) {
+                                                                    totalLuong += g.quantity * 5;
+                                                                } else if (g.productType.includes('1L') || g.productType.includes('1 lượng')) {
+                                                                    totalLuong += g.quantity;
+                                                                } else {
+                                                                    otherWeight += g.totalWeight;
+                                                                }
+                                                            });
+
+                                                            const parts = [];
+                                                            if (totalKg > 0) parts.push(`${totalKg} KG`);
+                                                            if (totalLuong > 0) parts.push(`${totalLuong} Lượng`);
+                                                            if (otherWeight > 0) parts.push(formatVND(otherWeight));
+
+                                                            return parts.length > 0 ? parts.join(', ') : formatVND(totalWeight);
+                                                        })()}
+                                                    </td>
+                                                    <td style={tdStyle}></td>
+                                                    <td style={tdStyle}>{formatVND(totalPrice)}</td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+
+                                        <p><strong>Thành tiền (bằng chữ):</strong> {totalInWords}.</p>
+
+                                        {/* Điều 2 */}
+                                        <span style={{ fontWeight: 'bold', textDecoration: 'underline', marginTop: '15px', display: 'block' }}>
+                                            Điều 2: Thời hạn giao hàng và phương thức thanh toán:
+                                        </span>
+                                        <ul style={{ paddingLeft: '20px' }}>
+                                            <li>
+                                                <strong>Phương thức chốt giá:</strong> Đơn giá bán được xác định vào thời điểm {date.time} ngày {date.day}/{date.month}/{date.year} sau
+                                                khi hai bên đạt được thỏa thuận qua hình thức: Trực tiếp
+                                            </li>
+                                            <li>
+                                                <strong>Phương thức thanh toán:</strong> Bên B giao cho bên A 100% tổng số tiền của hợp đồng khi hợp
+                                                đồng này được lập.
+                                            </li>
+                                            <li>
+                                                <strong>Thời hạn giao hàng:</strong> Bên A trả hàng cho bên B vào <strong>sau 100 ngày</strong> (Quý
+                                                khách phải mang theo CCCD/VNeID).
+                                            </li>
+                                        </ul>
+
+                                        {/* Điều 3 */}
+                                        <span style={{ fontWeight: 'bold', textDecoration: 'underline', marginTop: '15px', display: 'block' }}>
+                                            Điều 3: Những cam kết chung:
+                                        </span>
+                                        <ol style={{ paddingLeft: '20px' }}>
+                                            <li>Bên A chỉ trả hàng cho bên B khi bên B xuất trình CCCD/VNeID có thông tin ghi đúng như trong hợp đồng này.</li>
+                                            <li>Bên A có trách nhiệm trả hàng đúng thời hạn cam kết.</li>
+                                            <li>Bên A chỉ trả hàng cho chính chủ, không giải quyết các trường hợp lấy hộ.</li>
+                                        </ol>
+
+                                        {/* Điều 4 */}
+                                        <span style={{ fontWeight: 'bold', textDecoration: 'underline', marginTop: '15px', display: 'block' }}>
+                                            Điều 4: Hiệu lực thỏa thuận:
+                                        </span>
+                                        <p>Hợp đồng có giá trị kể từ ngày ký và tự động hết hiệu lực khi hai bên hoàn tất nghĩa vụ giao nhận.</p>
+
+                                        {/* Signatures */}
+                                        <div style={{ marginTop: '40px', display: 'flex', justifyContent: 'space-between' }}>
+                                            <div style={{ textAlign: 'center', width: '45%' }}>
+                                                <strong>BÊN B</strong><br />
+                                                (Ký, ghi rõ họ tên)
+                                            </div>
+                                            <div style={{ textAlign: 'center', width: '45%' }}>
+                                                <strong>BÊN A</strong><br />
+                                                (Ký tên và đóng dấu)
+                                                <div style={{
+                                                    height: '100px',
+                                                    color: '#ccc',
+                                                    fontStyle: 'italic',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center'
+                                                }}>
+                                                    (Đã thu tiền)
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div> {/* Closing relative zIndex container */}
                                 </div>
                             </div>
                         </div>
