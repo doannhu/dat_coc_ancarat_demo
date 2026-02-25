@@ -7,8 +7,10 @@ DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://user:password@localhost:5
 
 def clear_data():
     try:
-        print(f"Connecting to database at {DATABASE_URL}...")
-        engine = create_engine(DATABASE_URL)
+        # Force synchronous driver for this simple script by dropping +asyncpg
+        sync_url = DATABASE_URL.replace('+asyncpg', '')
+        print(f"Connecting to database at {sync_url}...")
+        engine = create_engine(sync_url)
         
         # Use an explicit connection
         with engine.connect() as connection:
