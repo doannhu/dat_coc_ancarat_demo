@@ -7,7 +7,7 @@ import { Button } from '../components/ui/Button';
 import { ContractGenerator } from '../components/ContractGenerator';
 import { ArrowLeft } from 'lucide-react';
 import styles from './Orders.module.css';
-import { formatTime, todayHanoi, startOfMonthHanoi } from '../lib/dateUtils';
+import { formatTime, formatDate, todayHanoi, startOfMonthHanoi } from '../lib/dateUtils';
 
 // Types (should ideally be shared/generated, but defining here for now)
 interface Product {
@@ -113,6 +113,16 @@ export const Orders = () => {
     const formatCurrency = (amount: number) => {
         return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
     };
+
+    const productSummaryByDate = orders.reduce((acc, order) => {
+        const dateStr = formatDate(order.created_at);
+        if (!acc[dateStr]) acc[dateStr] = {};
+        order.items.forEach(item => {
+            const type = item.product?.product_type || 'Unknown';
+            acc[dateStr][type] = (acc[dateStr][type] || 0) + 1;
+        });
+        return acc;
+    }, {} as Record<string, Record<string, number>>);
 
     return (
         <div className={styles.container}>
@@ -234,6 +244,41 @@ export const Orders = () => {
                 </div>
                 <Button onClick={fetchOrders} className="">Tải lại</Button>
             </div>
+
+            <Card className="mb-6">
+                <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-medium">Sản phẩm bán được theo ngày</CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                        {Object.entries(productSummaryByDate).length === 0 ? (
+                            <div className="text-sm text-gray-500">Không có dữ liệu trong khoảng thời gian này.</div>
+                        ) : Object.entries(productSummaryByDate).map(([date, counts], index) => {
+                            const colors = [
+                                'bg-pink-50 border-pink-200 text-pink-900',
+                                'bg-purple-50 border-purple-200 text-purple-900',
+                                'bg-blue-50 border-blue-200 text-blue-900',
+                                'bg-teal-50 border-teal-200 text-teal-900',
+                                'bg-orange-50 border-orange-200 text-orange-900'
+                            ];
+                            const colorClass = colors[index % colors.length];
+                            return (
+                                <div key={date} className={`border rounded p-3 ${colorClass}`}>
+                                    <div className="font-bold border-b border-black/10 pb-1 mb-2">{date}</div>
+                                    <div className="space-y-1 text-sm">
+                                        {Object.entries(counts).map(([type, count]) => (
+                                            <div key={type} className="flex justify-between">
+                                                <span className="opacity-80 font-medium">{type}</span>
+                                                <span className="font-bold">{count}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </CardContent>
+            </Card>
 
             <Card>
                 <CardHeader>
