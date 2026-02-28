@@ -433,36 +433,71 @@ export function ManufacturerOrderList() {
                                             <th className="px-4 py-3 text-left">Mã sản phẩm</th>
                                             <th className="px-4 py-3 text-left">Loại</th>
                                             <th className="px-4 py-3 text-left">Khách hàng</th>
-                                            <th className="px-4 py-3 text-left">Ngày đặt hàng</th>
                                             <th className="px-4 py-3 text-left">Cửa hàng</th>
                                             <th className="px-4 py-3 text-right">Giá</th>
                                         </tr>
                                     </thead>
-                                    <tbody>
-                                        {pendingProducts.map((product) => (
-                                            <tr key={product.id} className="border-b hover:bg-orange-50">
-                                                <td className="px-4 py-3">
-                                                    <div>#{product.id}</div>
-                                                    <div className="text-xs text-gray-500 font-mono">{product.product_code || '-'}</div>
-                                                </td>
-                                                <td className="px-4 py-3">{product.product_type}</td>
-                                                <td className="px-4 py-3 font-medium">{product.customer_name || '-'}</td>
-                                                <td className="px-4 py-3">
-                                                    {product.order_date
-                                                        ? formatDate(product.order_date)
-                                                        : '-'}
-                                                </td>
-                                                <td className="px-4 py-3">{product.store_name || '-'}</td>
-                                                <td className="px-4 py-3 text-right font-bold text-orange-600">
-                                                    {formatCurrency(product.last_price || 0)}
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                    <tfoot className="bg-orange-100">
+                                    {(() => {
+                                        const pendingByDate = pendingProducts.reduce((acc, product) => {
+                                            const dateStr = product.order_date ? formatDate(product.order_date) : 'Chưa xác định ngày';
+                                            if (!acc[dateStr]) acc[dateStr] = [];
+                                            acc[dateStr].push(product);
+                                            return acc;
+                                        }, {} as Record<string, Product[]>);
+
+                                        // Sort the dates (assuming YYYY-MM-DD or simple string compare is decent, fallback to simple keys)
+                                        const sortedDates = Object.keys(pendingByDate).sort((a, b) => {
+                                            if (a === 'Chưa xác định ngày') return 1;
+                                            if (b === 'Chưa xác định ngày') return -1;
+                                            return b.localeCompare(a);
+                                        });
+
+                                        return sortedDates.map((dateStr) => {
+                                            const products = pendingByDate[dateStr];
+                                            const productTypeCounts = products.reduce((acc, p) => {
+                                                const type = p.product_type || 'Unknown';
+                                                acc[type] = (acc[type] || 0) + 1;
+                                                return acc;
+                                            }, {} as Record<string, number>);
+
+                                            const dateSummary = Object.entries(productTypeCounts)
+                                                .map(([type, count]) => `${count} x ${type}`)
+                                                .join(', ');
+
+                                            return (
+                                                <tbody key={dateStr}>
+                                                    <tr className="bg-orange-100/60 border-y border-orange-200">
+                                                        <td colSpan={5} className="px-4 py-2">
+                                                            <div className="flex justify-between items-center">
+                                                                <span className="font-bold text-orange-900">{dateStr}</span>
+                                                                <span className="text-xs font-semibold text-orange-800 bg-white border border-orange-200 px-2 py-1 rounded shadow-sm">
+                                                                    {dateSummary}
+                                                                </span>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                    {products.map((product) => (
+                                                        <tr key={product.id} className="border-b hover:bg-orange-50">
+                                                            <td className="px-4 py-3">
+                                                                <div>#{product.id}</div>
+                                                                <div className="text-xs text-gray-500 font-mono">{product.product_code || '-'}</div>
+                                                            </td>
+                                                            <td className="px-4 py-3">{product.product_type}</td>
+                                                            <td className="px-4 py-3 font-medium">{product.customer_name || '-'}</td>
+                                                            <td className="px-4 py-3">{product.store_name || '-'}</td>
+                                                            <td className="px-4 py-3 text-right font-bold text-orange-600">
+                                                                {formatCurrency(product.last_price || 0)}
+                                                            </td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            );
+                                        });
+                                    })()}
+                                    <tfoot className="bg-orange-200/50">
                                         <tr>
-                                            <td colSpan={5} className="px-4 py-3 font-bold">
-                                                Tổng {pendingProductTypeSummary && <span className="text-sm font-normal text-orange-800 ml-2">({pendingProductTypeSummary})</span>}
+                                            <td colSpan={4} className="px-4 py-3 font-bold text-orange-900">
+                                                Tổng toàn bộ {pendingProductTypeSummary && <span className="text-sm font-normal text-orange-800 ml-2">({pendingProductTypeSummary})</span>}
                                             </td>
                                             <td className="px-4 py-3 text-right font-bold text-orange-600">
                                                 {formatCurrency(totalPendingValue)}
