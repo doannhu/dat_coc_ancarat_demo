@@ -38,7 +38,8 @@ class ProductRepository:
     async def get_available_by_store(self, store_id: int):
         """Get available products for a specific store"""
         query = select(Product).options(
-            selectinload(Product.store)
+            selectinload(Product.store),
+            selectinload(Product.transactions)
         ).where(
             Product.status == ProductStatus.AVAILABLE,
             Product.store_id == store_id

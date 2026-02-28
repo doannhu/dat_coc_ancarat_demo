@@ -92,6 +92,12 @@ class ProductService:
         products = await self.repository.get_available_by_store(store_id=store_id)
         for p in products:
             p.store_name = p.store.name if p.store else None
+            # Find the most recent transaction to link
+            if getattr(p, 'transactions', None):
+                sorted_txs = sorted(p.transactions, key=lambda x: x.created_at, reverse=True)
+                latest_tx = sorted_txs[0]
+                p.transaction_code = latest_tx.code
+                p.order_date = latest_tx.created_at
         return products
 
     async def move_product(self, product_id: int, new_store_id: int) -> Product:

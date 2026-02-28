@@ -61,16 +61,16 @@ interface Store {
 // ─── Product Picker Component ────────────────────────────────────────
 function ProductPicker({
     label,
-    selectedProduct,
+    selectedProducts,
     onSelect,
-    onClear,
+    onRemove,
     customers,
     availableProducts,
 }: {
     label: string;
-    selectedProduct: Product | null;
+    selectedProducts: Product[];
     onSelect: (product: Product) => void;
-    onClear: () => void;
+    onRemove: (productId: number) => void;
     customers: Customer[];
     availableProducts: Product[];
 }) {
@@ -80,6 +80,7 @@ function ProductPicker({
     const [customerTxs, setCustomerTxs] = useState<Transaction[]>([]);
     const [selectedTx, setSelectedTx] = useState<Transaction | null>(null);
     const [loadingTxs, setLoadingTxs] = useState(false);
+    const [isPicking, setIsPicking] = useState(true);
 
     // Filter customers
     const filteredCustomers = searchCustomer.length > 0
@@ -124,60 +125,38 @@ function ProductPicker({
         setSelectedTx(null);
     };
 
-    // If product already selected, show compact card
-    if (selectedProduct) {
-        return (
-            <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                    <h3 className="font-semibold text-sm text-gray-700">{label}</h3>
-                    <button onClick={onClear} className="text-gray-400 hover:text-red-500 transition-colors">
-                        <X className="h-4 w-4" />
-                    </button>
-                </div>
-                <div className={`border-2 rounded-lg p-4 ${selectedProduct.status === 'Đã bán'
-                        ? 'border-red-200 bg-red-50'
-                        : 'border-green-200 bg-green-50'
-                    }`}>
-                    <div className="flex items-center justify-between mb-2">
-                        <span className="font-bold text-lg">#{selectedProduct.id}</span>
-                        <span className={`px-2 py-0.5 rounded text-xs font-medium ${selectedProduct.status === 'Đã bán'
-                                ? 'bg-red-100 text-red-700 border border-red-200'
-                                : 'bg-green-100 text-green-700 border border-green-200'
-                            }`}>
-                            {selectedProduct.status}
-                        </span>
-                    </div>
-                    <div className="space-y-1 text-sm">
-                        <div className="flex justify-between">
-                            <span className="text-gray-500">Loại:</span>
-                            <span className="font-medium">{selectedProduct.product_type}</span>
-                        </div>
-                        <div className="flex justify-between">
-                            <span className="text-gray-500">Giá:</span>
-                            <span className="font-medium">{formatCurrency(selectedProduct.last_price || 0)}</span>
-                        </div>
-                        {selectedProduct.customer_name && (
-                            <div className="flex justify-between text-yellow-700">
-                                <span>Khách hàng:</span>
-                                <span className="font-medium">{selectedProduct.customer_name}</span>
-                            </div>
-                        )}
-                        {selectedProduct.status === 'Có sẵn' && (
-                            <div className="flex justify-between text-blue-700">
-                                <span>Kho:</span>
-                                <span className="font-medium">{selectedProduct.store?.name || selectedProduct.store_name || 'N/A'}</span>
-                            </div>
-                        )}
-                    </div>
-                </div>
+    // Show selected products at the top
+    const selectedListUI = selectedProducts.map(p => (
+        <div key={p.id} className={`border-2 rounded-lg p-3 relative ${p.status === 'Đã bán' ? 'border-red-200 bg-red-50' : 'border-green-200 bg-green-50'}`}>
+            <button onClick={() => onRemove(p.id)} className="absolute top-2 right-2 text-gray-400 hover:text-red-500 bg-white rounded-full shadow-sm"><X className="h-4 w-4" /></button>
+            <div className="flex items-center gap-2 mb-1">
+                <span className="font-bold">#{p.id}</span>
+                <span className={`px-2 py-0.5 rounded text-xs font-medium ${p.status === 'Đã bán' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>{p.status}</span>
             </div>
-        );
-    }
+            <div className="text-sm space-y-1">
+                <div className="flex justify-between"><span className="text-gray-500">Loại:</span><span className="font-medium">{p.product_type}</span></div>
+                <div className="flex justify-between"><span className="text-gray-500">Giá:</span><span className="font-medium">{formatCurrency(p.last_price || 0)}</span></div>
+                {p.customer_name && <div className="flex justify-between text-yellow-700"><span>Khách hàng:</span><span className="font-medium line-clamp-1 max-w-[150px]">{p.customer_name}</span></div>}
+            </div>
+        </div>
+    ));
 
     // Product picker UI
     return (
         <div className="space-y-3">
-            <h3 className="font-semibold text-sm text-gray-700">{label}</h3>
+            <div className="flex items-center justify-between">
+                <h3 className="font-semibold text-sm text-gray-700">{label} ({selectedProducts.length} SP)</h3>
+                <Button variant="outline" size="sm" onClick={() => setIsPicking(!isPicking)}>
+                    {isPicking ? 'Thu gọn' : 'Thêm sản phẩm'}
+                </Button>
+            </div>
+            {selectedProducts.length > 0 && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-4">
+                    {selectedListUI}
+                </div>
+            )}
+            
+            {isPicking && <>
 
             {/* Mode tabs */}
             <div className="flex border-b">
@@ -259,6 +238,7 @@ function ProductPicker({
                                         const soldItems = tx.items.filter(i => i.product.status === 'Đã bán');
                                         if (soldItems.length === 0) return null;
                                         const isOpen = selectedTx?.id === tx.id;
+                                        const selectedIds = selectedProducts.map(sp => sp.id);
 
                                         return (
                                             <div key={tx.id} className="border rounded">
@@ -290,6 +270,7 @@ function ProductPicker({
                                                                 })}
                                                             >
                                                                 <div>
+                                                                    {selectedIds.includes(item.product_id) && <span className="text-xs text-green-600 bg-green-100 px-1 rounded mr-2">Đã chọn</span>}
                                                                     <span className="font-medium text-sm">#{item.product_id}</span>
                                                                     <span className="text-sm text-gray-600 ml-2">{item.product.product_type}</span>
                                                                 </div>
@@ -328,8 +309,9 @@ function ProductPicker({
                                     {availableProducts.map(p => (
                                         <tr
                                             key={p.id}
-                                            className="border-b hover:bg-green-50 cursor-pointer transition-colors"
+                                            
                                             onClick={() => handlePickProduct(p)}
+                                            className={`border-b hover:bg-green-50 cursor-pointer transition-colors ${selectedProducts.find(sp => sp.id === p.id) ? 'bg-green-100 opacity-60' : ''}`}
                                         >
                                             <td className="px-3 py-2 font-medium">#{p.id}</td>
                                             <td className="px-3 py-2">{p.product_type}</td>
@@ -343,6 +325,7 @@ function ProductPicker({
                     )}
                 </div>
             )}
+            </>}
         </div>
     );
 }
@@ -351,8 +334,8 @@ function ProductPicker({
 export function SwapProducts() {
     const navigate = useNavigate();
 
-    const [product1, setProduct1] = useState<Product | null>(null);
-    const [product2, setProduct2] = useState<Product | null>(null);
+    const [products1, setProducts1] = useState<Product[]>([]);
+    const [products2, setProducts2] = useState<Product[]>([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
@@ -414,25 +397,31 @@ export function SwapProducts() {
     };
 
     const handleSwap = async () => {
-        if (!product1 || !product2) return;
+        if (products1.length === 0 || products2.length === 0) return;
         if (!selectedStaffId) { setError('Vui lòng chọn nhân viên'); return; }
         if (!selectedStoreId) { setError('Vui lòng chọn cửa hàng'); return; }
-        if (product1.id === product2.id) { setError('Không thể hoán đổi cùng một sản phẩm'); return; }
+        
+        const p1Ids = products1.map(p => p.id);
+        const p2Ids = products2.map(p => p.id);
+        if (p1Ids.some(id => p2Ids.includes(id))) { 
+            setError('Không thể hoán đổi cùng một sản phẩm (Sản phẩm bị trùng lặp giữa 2 nhóm)'); 
+            return; 
+        }
 
         setLoading(true);
         setError('');
         setSuccess('');
         try {
             await axios.post('/api/v1/transactions/swap', {
-                product_id_1: product1.id,
-                product_id_2: product2.id,
+                product_ids_1: p1Ids,
+                product_ids_2: p2Ids,
                 staff_id: selectedStaffId,
                 store_id: selectedStoreId,
                 created_at: hanoiToISO(swapDate)
             });
             setSuccess('Hoán đổi thành công! Giao dịch đã được ghi nhận.');
-            setProduct1(null);
-            setProduct2(null);
+            setProducts1([]);
+            setProducts2([]);
             // Refresh available products
             fetchAvailableProducts();
         } catch (e: any) {
@@ -442,10 +431,10 @@ export function SwapProducts() {
         }
     };
 
-    const isValidSwap = product1 && product2 && product1.id !== product2.id && (
-        (product1.status === 'Đã bán' && product2.status === 'Có sẵn') ||
-        (product2.status === 'Đã bán' && product1.status === 'Có sẵn') ||
-        (product1.status === 'Đã bán' && product2.status === 'Đã bán')
+    const isValidSwap = products1.length > 0 && products2.length > 0 && !products1.some(p => products2.map(x=>x.id).includes(p.id)) && (
+        (products1.every(p => p.status === 'Đã bán') && products2.every(p => p.status === 'Có sẵn')) ||
+        (products2.every(p => p.status === 'Đã bán') && products1.every(p => p.status === 'Có sẵn')) ||
+        (products1.every(p => p.status === 'Đã bán') && products2.every(p => p.status === 'Đã bán'))
     );
 
     return (
@@ -511,10 +500,10 @@ export function SwapProducts() {
                         </CardHeader>
                         <CardContent>
                             <ProductPicker
-                                label="Chọn sản phẩm 1"
-                                selectedProduct={product1}
-                                onSelect={(p) => { setProduct1(p); setError(''); setSuccess(''); }}
-                                onClear={() => setProduct1(null)}
+                                label="Nhóm sản phẩm 1"
+                                selectedProducts={products1}
+                                onSelect={(p) => { if (!products1.find(x => x.id === p.id)) setProducts1([...products1, p]); setError(''); setSuccess(''); }}
+                                onRemove={(pid) => setProducts1(products1.filter(p => p.id !== pid))}
                                 customers={customers}
                                 availableProducts={availableProducts}
                             />
@@ -527,10 +516,10 @@ export function SwapProducts() {
                         </CardHeader>
                         <CardContent>
                             <ProductPicker
-                                label="Chọn sản phẩm 2"
-                                selectedProduct={product2}
-                                onSelect={(p) => { setProduct2(p); setError(''); setSuccess(''); }}
-                                onClear={() => setProduct2(null)}
+                                label="Nhóm sản phẩm 2"
+                                selectedProducts={products2}
+                                onSelect={(p) => { if (!products2.find(x => x.id === p.id)) setProducts2([...products2, p]); setError(''); setSuccess(''); }}
+                                onRemove={(pid) => setProducts2(products2.filter(p => p.id !== pid))}
                                 customers={customers}
                                 availableProducts={availableProducts}
                             />
@@ -551,39 +540,31 @@ export function SwapProducts() {
                 )}
 
                 {/* Swap Summary & Action */}
-                {product1 && product2 && (
+                {products1.length > 0 && products2.length > 0 && (
                     <Card>
                         <CardContent className="p-4">
                             {/* Swap visual */}
                             <div className="flex items-center justify-center gap-4 py-4">
-                                <div className="text-center">
-                                    <div className="font-bold text-lg">#{product1.id}</div>
-                                    <div className="text-sm text-gray-600">{product1.product_type}</div>
-                                    <span className={`inline-block mt-1 px-2 py-0.5 rounded text-xs font-medium ${product1.status === 'Đã bán'
-                                            ? 'bg-red-100 text-red-700'
-                                            : 'bg-green-100 text-green-700'
-                                        }`}>
-                                        {product1.status}
-                                    </span>
-                                    {product1.customer_name && (
-                                        <div className="text-xs text-gray-500 mt-1">{product1.customer_name}</div>
-                                    )}
+                                <div className="text-center bg-gray-50 p-4 rounded-lg flex-1">
+                                    <div className="font-bold text-lg mb-2">Nhóm 1 ({products1.length} SP)</div>
+                                    <div className="text-sm text-gray-600 space-y-1">
+                                        {Object.entries(products1.reduce((acc, p) => { acc[p.product_type] = (acc[p.product_type] || 0) + 1; return acc; }, {} as Record<string, number>)).map(([type, count]) => (
+                                            <div key={type} className="font-medium">{count} x {type}</div>
+                                        ))}
+                                    </div>
+                                    {products1[0] && <span className={`inline-block mt-2 px-2 py-0.5 rounded text-xs font-medium ${products1[0].status === 'Đã bán' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>{products1[0].status}</span>}
                                 </div>
 
-                                <RefreshCw className={`h-8 w-8 ${isValidSwap ? 'text-purple-500' : 'text-gray-300'}`} />
+                                <RefreshCw className={`h-8 w-8 flex-shrink-0 ${isValidSwap ? 'text-purple-500' : 'text-gray-300'}`} />
 
-                                <div className="text-center">
-                                    <div className="font-bold text-lg">#{product2.id}</div>
-                                    <div className="text-sm text-gray-600">{product2.product_type}</div>
-                                    <span className={`inline-block mt-1 px-2 py-0.5 rounded text-xs font-medium ${product2.status === 'Đã bán'
-                                            ? 'bg-red-100 text-red-700'
-                                            : 'bg-green-100 text-green-700'
-                                        }`}>
-                                        {product2.status}
-                                    </span>
-                                    {product2.customer_name && (
-                                        <div className="text-xs text-gray-500 mt-1">{product2.customer_name}</div>
-                                    )}
+                                <div className="text-center bg-gray-50 p-4 rounded-lg flex-1">
+                                    <div className="font-bold text-lg mb-2">Nhóm 2 ({products2.length} SP)</div>
+                                    <div className="text-sm text-gray-600 space-y-1">
+                                        {Object.entries(products2.reduce((acc, p) => { acc[p.product_type] = (acc[p.product_type] || 0) + 1; return acc; }, {} as Record<string, number>)).map(([type, count]) => (
+                                            <div key={type} className="font-medium">{count} x {type}</div>
+                                        ))}
+                                    </div>
+                                    {products2[0] && <span className={`inline-block mt-2 px-2 py-0.5 rounded text-xs font-medium ${products2[0].status === 'Đã bán' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>{products2[0].status}</span>}
                                 </div>
                             </div>
 
@@ -591,9 +572,7 @@ export function SwapProducts() {
                                 <div className="flex items-center gap-2 text-yellow-600 bg-yellow-50 p-3 rounded-md text-sm mb-4">
                                     <AlertTriangle className="h-4 w-4 flex-shrink-0" />
                                     <span>
-                                        {product1.id === product2.id
-                                            ? 'Không thể hoán đổi cùng một sản phẩm.'
-                                            : 'Hoán đổi chỉ hỗ trợ: "Đã bán" ↔ "Có sẵn" hoặc "Đã bán" ↔ "Đã bán".'}
+                                        Hoán đổi chỉ hỗ trợ: cùng trạng thái trong mỗi nhóm, và kết hợp "Đã bán" ↔ "Có sẵn" hoặc "Đã bán" ↔ "Đã bán". Không được trùng sản phẩm.
                                     </span>
                                 </div>
                             )}
@@ -601,7 +580,7 @@ export function SwapProducts() {
                             <Button
                                 onClick={handleSwap}
                                 disabled={!isValidSwap || loading || !selectedStaffId || !selectedStoreId}
-                                className="w-full bg-purple-600 hover:bg-purple-700"
+                                className="w-full bg-purple-600 hover:bg-purple-700 mt-2"
                             >
                                 <RefreshCw className="h-4 w-4 mr-2" />
                                 {loading ? 'Đang xử lý...' : 'Xác nhận Hoán đổi'}

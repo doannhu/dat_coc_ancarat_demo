@@ -2,7 +2,7 @@
 
 # Ensure a backup file is provided
 if [ -z "$1" ]; then
-  echo "Usage: ./restore_db.sh <backup_file.sql>"
+  echo "Usage: ./restore_db.sh <db_backup_28022026_1837.sql>"
   exit 1
 fi
 

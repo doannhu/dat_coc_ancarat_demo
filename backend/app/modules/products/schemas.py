@@ -54,6 +54,7 @@ class Product(ProductInDBBase):
     store_name: Optional[str] = None
     store: Optional[Store] = None
     received_date: Optional[datetime] = None
+    transaction_code: Optional[str] = None
 
 
 class ProductWithTransactions(ProductInDBBase):

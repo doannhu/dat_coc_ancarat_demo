@@ -167,8 +167,8 @@ class ManufacturerReceiveCreate(BaseModel):
 
 # Swap schemas
 class SwapCreate(BaseModel):
-    product_id_1: int
-    product_id_2: int
+    product_ids_1: List[int]
+    product_ids_2: List[int]
     staff_id: int
     store_id: int
     note: Optional[str] = None

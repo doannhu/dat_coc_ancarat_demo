@@ -145,8 +145,10 @@ export const Orders = () => {
         const dateStr = formatDate(order.created_at);
         if (!acc[dateStr]) acc[dateStr] = {};
         order.items.forEach(item => {
-            const type = item.product?.product_type || 'Unknown';
-            acc[dateStr][type] = (acc[dateStr][type] || 0) + 1;
+            if (item.product && item.product.status !== 'Có sẵn' && item.product.status !== 'Đã trả nhà SX') {
+                const type = item.product.product_type || 'Unknown';
+                acc[dateStr][type] = (acc[dateStr][type] || 0) + 1;
+            }
         });
         return acc;
     }, {} as Record<string, Record<string, number>>);
@@ -381,8 +383,10 @@ export const Orders = () => {
                                                         </div>
                                                         <div className="text-sm font-medium">
                                                             {Object.entries(order.items.reduce((acc, item) => {
-                                                                const type = item.product?.product_type || 'Unknown';
-                                                                acc[type] = (acc[type] || 0) + 1;
+                                                                if (item.product && item.product.status !== 'Có sẵn' && item.product.status !== 'Đã trả nhà SX') {
+                                                                    const type = item.product.product_type || 'Unknown';
+                                                                    acc[type] = (acc[type] || 0) + 1;
+                                                                }
                                                                 return acc;
                                                             }, {} as Record<string, number>)).map(([type, count]) => `${count} x ${type}`).join(', ')}
                                                         </div>

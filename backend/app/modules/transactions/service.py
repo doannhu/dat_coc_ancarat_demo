@@ -468,91 +468,95 @@ class TransactionService:
         return await self.repository.get(id=transaction.id)
 
     async def create_swap(self, swap_in: transaction_schemas.SwapCreate) -> Transaction:
-        """Create a swap transaction - swap two products between customers/inventory.
-        
-        Preserves history: the original sale TransactionItem keeps record of the
-        original product (original_product_id) and is marked swapped=True, while
-        product_id is updated to the replacement product. A SWAP transaction is
-        created with customer_id and linked_transaction_id for full audit trail.
-        
-        Supports:
-        - Sold <-> Available (customer gets a different product from inventory)
-        - Sold <-> Sold (two customers swapping products)
-        """
+        """Create an N-to-M swap transaction."""
         tx_created = swap_in.created_at or datetime.now()
         if hasattr(tx_created, 'tzinfo') and tx_created.tzinfo is not None:
             tx_created = tx_created.astimezone(None).replace(tzinfo=None)
-
-        p1 = await self.product_repository.get(id=swap_in.product_id_1)
-        p2 = await self.product_repository.get(id=swap_in.product_id_2)
-
-        if not p1 or not p2:
-            raise ValueError("One or both products not found")
-
+        g1 = []
+        for pid in swap_in.product_ids_1:
+            p = await self.product_repository.get(id=pid)
+            if not p: raise ValueError(f"Product {pid} not found")
+            g1.append(p)
+            
+        g2 = []
+        for pid in swap_in.product_ids_2:
+            p = await self.product_repository.get(id=pid)
+            if not p: raise ValueError(f"Product {pid} not found")
+            g2.append(p)
+        def get_status(group):
+            if all(p.status == ProductStatus.SOLD for p in group): return ProductStatus.SOLD
+            if all(p.status == ProductStatus.AVAILABLE for p in group): return ProductStatus.AVAILABLE
+            raise ValueError("Tất cả sản phẩm trong một nhóm phải có cùng trạng thái (hoặc cùng Đã bán, hoặc cùng Có sẵn).")
+        s1 = get_status(g1)
+        s2 = get_status(g2)
         customer_id = None
         linked_tx_id = None
-        note_parts = []
-
-        if p1.status == ProductStatus.SOLD and p2.status == ProductStatus.SOLD:
-            # Case 1: Sold <-> Sold — two customers swapping products
-            tx_item_1 = await self._get_active_sale_item(p1.id)
-            tx_item_2 = await self._get_active_sale_item(p2.id)
-            if not tx_item_1 or not tx_item_2:
-                raise ValueError("Could not find active sale transactions for both products")
-
-            # Mark both original sale items with swap history
-            tx_item_1.original_product_id = p1.id
-            tx_item_1.product_id = p2.id
-            tx_item_1.swapped = True
-            self.repository.db.add(tx_item_1)
-
-            tx_item_2.original_product_id = p2.id
-            tx_item_2.product_id = p1.id
-            tx_item_2.swapped = True
-            self.repository.db.add(tx_item_2)
-
-            note_parts.append(f"SP #{p1.id} ↔ SP #{p2.id}")
-
-        elif (p1.status == ProductStatus.SOLD and p2.status == ProductStatus.AVAILABLE) or \
-             (p2.status == ProductStatus.SOLD and p1.status == ProductStatus.AVAILABLE):
-            # Case 2: Sold <-> Available — customer gets a different product from inventory
-            sold_p = p1 if p1.status == ProductStatus.SOLD else p2
-            avail_p = p2 if p1.status == ProductStatus.SOLD else p1
-
-            tx_item = await self._get_active_sale_item(sold_p.id)
-            if not tx_item:
-                raise ValueError(f"No active sale transaction found for product {sold_p.id}")
-
-            # Preserve history on the original sale TransactionItem
-            tx_item.original_product_id = sold_p.id
-            tx_item.product_id = avail_p.id
-            tx_item.swapped = True
-            self.repository.db.add(tx_item)
-
-            # Link swap to the customer's original sale transaction
-            sale_tx = tx_item.transaction
+        async def link_and_swap_items(sold_group, incoming_group):
+            nonlocal customer_id, linked_tx_id
+            tx_items = []
+            sale_tx = None
+            for p in sold_group:
+                tx_item = await self._get_active_sale_item(p.id)
+                if not tx_item: raise ValueError(f"Không tìm thấy đơn hàng cho sản phẩm {p.id}")
+                tx_items.append(tx_item)
+                if not sale_tx:
+                    sale_tx = tx_item.transaction
+                    
             if sale_tx:
                 customer_id = sale_tx.customer_id
                 linked_tx_id = sale_tx.id
-
-            # Update product statuses
-            sold_update = product_schemas.ProductUpdate(
-                status=ProductStatus.AVAILABLE,
-                store_id=avail_p.store_id
-            )
-            await self.product_repository.update(db_obj=sold_p, obj_in=sold_update)
-
-            avail_update = product_schemas.ProductUpdate(
-                status=ProductStatus.SOLD,
-                store_id=sold_p.store_id
-            )
-            await self.product_repository.update(db_obj=avail_p, obj_in=avail_update)
-
-            note_parts.append(f"SP #{sold_p.id} → SP #{avail_p.id}")
+            n = len(sold_group)
+            m = len(incoming_group)
+            limit = max(n, m)
+            
+            for i in range(limit):
+                if i < n and i < m:
+                    # 1 to 1 Mapping
+                    tx_items[i].original_product_id = sold_group[i].id
+                    tx_items[i].product_id = incoming_group[i].id
+                    tx_items[i].swapped = True
+                    self.repository.db.add(tx_items[i])
+                elif i < n and i >= m:
+                    # Excess old items
+                    await self.repository.db.delete(tx_items[i])
+                elif i >= n and i < m:
+                    # Excess new items
+                    new_t_item = TransactionItem(
+                        transaction_id=sale_tx.id,
+                        product_id=incoming_group[i].id,
+                        original_product_id=sold_group[0].id,
+                        swapped=True,
+                        price_at_time=incoming_group[i].last_price or 0
+                    )
+                    self.repository.db.add(new_t_item)
+        if s1 == ProductStatus.SOLD and s2 == ProductStatus.SOLD:
+            # Customer A <-> Customer B
+            await link_and_swap_items(g1, g2)
+            await link_and_swap_items(g2, g1)
+            # Store update: swap their store_ids to match their new owners? 
+            # Actually customer to customer doesn't change `status`
+            for p1, p2 in zip(g1, g2):
+                pass # Keep it simple, just update the store_id if needed
+                
+        elif s1 == ProductStatus.SOLD and s2 == ProductStatus.AVAILABLE:
+            # Customer returns g1, takes g2
+            await link_and_swap_items(g1, g2)
+            # Update statuses
+            for p in g1:
+                await self.product_repository.update(db_obj=p, obj_in=product_schemas.ProductUpdate(status=ProductStatus.AVAILABLE, store_id=g2[0].store_id))
+            for p in g2:
+                await self.product_repository.update(db_obj=p, obj_in=product_schemas.ProductUpdate(status=ProductStatus.SOLD, store_id=g1[0].store_id))
+                
+        elif s2 == ProductStatus.SOLD and s1 == ProductStatus.AVAILABLE:
+            # Customer returns g2, takes g1
+            await link_and_swap_items(g2, g1)
+            for p in g2:
+                await self.product_repository.update(db_obj=p, obj_in=product_schemas.ProductUpdate(status=ProductStatus.AVAILABLE, store_id=g1[0].store_id))
+            for p in g1:
+                await self.product_repository.update(db_obj=p, obj_in=product_schemas.ProductUpdate(status=ProductStatus.SOLD, store_id=g2[0].store_id))
         else:
-            raise ValueError("Swap requires at least one SOLD product")
-
-        # --- Create the SWAP transaction with full audit trail ---
+            raise ValueError("Hoán đổi phải có ít nhất 1 nhóm sản phẩm Đã bán.")
+        # Create SWAP transaction
         transaction = Transaction(
             type=TransactionType.SWAP,
             customer_id=customer_id,
@@ -564,19 +568,17 @@ class TransactionService:
         )
         await self.repository.add_transaction(transaction)
         await self.repository.db.flush()
-
-        # Record both products as transaction items
-        for p in [p1, p2]:
+        for p in g1 + g2:
             t_item = TransactionItem(
                 transaction_id=transaction.id,
                 product_id=p.id,
                 price_at_time=p.last_price or 0
             )
             await self.repository.add_transaction_item(t_item)
-
         await self.repository.commit()
         await self.repository.refresh(transaction)
         return await self.repository.get(id=transaction.id)
+
 
     async def _get_active_sale_item(self, product_id: int):
         """Find the most recent SALE transaction item for a product."""

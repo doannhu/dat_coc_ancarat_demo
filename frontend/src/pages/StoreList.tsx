@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
-import { ArrowLeft, ArrowRight, Store as StoreIcon } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Store as StoreIcon, ChevronDown, ChevronRight } from 'lucide-react';
 
 // Types
 interface Product {
@@ -14,6 +14,8 @@ interface Product {
     last_price: number;
     store_id: number;
     store_name?: string;
+    transaction_code?: string;
+    order_date?: string;
 }
 
 interface Store {
@@ -33,6 +35,15 @@ export function StoreList() {
     const [loading, setLoading] = useState(false);
     const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
     const [moveError, setMoveError] = useState<string | null>(null);
+    const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
+
+    const toggleGroup = (storeId: number, txCode: string) => {
+        const key = `${storeId}-${txCode}`;
+        setExpandedGroups(prev => ({
+            ...prev,
+            [key]: !prev[key]
+        }));
+    };
 
     useEffect(() => {
         fetchData();
@@ -211,33 +222,90 @@ export function StoreList() {
                                                         <th className="px-3 py-2 text-center">Action</th>
                                                     </tr>
                                                 </thead>
-                                                <tbody>
-                                                    {store.products.map(product => (
-                                                        <tr key={product.id} className="border-b hover:bg-gray-50">
-                                                            <td className="px-3 py-2">
-                                                                <div>#{product.id}</div>
-                                                                <div className="text-xs text-gray-500 font-mono">{product.product_code || '-'}</div>
-                                                            </td>
-                                                            <td className="px-3 py-2">{product.product_type}</td>
-                                                            <td className="px-3 py-2 text-right font-medium">
-                                                                {formatCurrency(product.last_price || 0)}
-                                                            </td>
-                                                            <td className="px-3 py-2 text-center">
-                                                                <Button
-                                                                    variant="ghost"
-                                                                    size="sm"
-                                                                    onClick={() => setSelectedProduct({
-                                                                        ...product,
-                                                                        store_name: store.name
-                                                                    })}
-                                                                    className="text-blue-600 hover:text-blue-800"
+                                                {(() => {
+                                                    const groupedByTx = store.products.reduce((acc, product) => {
+                                                        const txCode = product.transaction_code || 'Khác';
+                                                        if (!acc[txCode]) acc[txCode] = [];
+                                                        acc[txCode].push(product);
+                                                        return acc;
+                                                    }, {} as Record<string, Product[]>);
+
+                                                    const sortedTxCodes = Object.keys(groupedByTx).sort((a, b) => b.localeCompare(a));
+
+                                                    return sortedTxCodes.map((txCode) => {
+                                                        const productsInTx = groupedByTx[txCode];
+
+                                                        // Extract date from the first product's order_date if available
+                                                        const firstProductHasDate = productsInTx.find(p => p.order_date);
+                                                        const extractedDate = firstProductHasDate && firstProductHasDate.order_date
+                                                            ? new Date(firstProductHasDate.order_date).toLocaleDateString('vi-VN')
+                                                            : '';
+
+                                                        const summaryCounts = productsInTx.reduce((acc, p) => {
+                                                            const type = p.product_type || 'Unknown';
+                                                            acc[type] = (acc[type] || 0) + 1;
+                                                            return acc;
+                                                        }, {} as Record<string, number>);
+
+                                                        const summaryStr = Object.entries(summaryCounts)
+                                                            .map(([type, count]) => `${count} x ${type}`)
+                                                            .join(', ');
+
+                                                        const groupKey = `${store.id}-${txCode}`;
+                                                        const isExpanded = expandedGroups[groupKey];
+
+                                                        return (
+                                                            <tbody key={txCode}>
+                                                                <tr
+                                                                    className="bg-blue-50/50 border-y border-gray-200 cursor-pointer hover:bg-blue-100/50 transition-colors"
+                                                                    onClick={() => toggleGroup(store.id, txCode)}
                                                                 >
-                                                                    Chuyển kho
-                                                                </Button>
-                                                            </td>
-                                                        </tr>
-                                                    ))}
-                                                </tbody>
+                                                                    <td colSpan={4} className="px-3 py-2">
+                                                                        <div className="flex items-center gap-3">
+                                                                            <div className="text-gray-500">
+                                                                                {isExpanded ? <ChevronDown size={20} /> : <ChevronRight size={20} />}
+                                                                            </div>
+                                                                            <div className="flex justify-between items-center w-full">
+                                                                                <div className="flex flex-col">
+                                                                                    <span className="font-bold text-gray-700">Giao dịch: {txCode}</span>
+                                                                                    {extractedDate && <span className="text-xs text-gray-500">Ngày: {extractedDate}</span>}
+                                                                                </div>
+                                                                                <span className="text-xs font-semibold text-gray-600 bg-white border border-gray-200 px-2 py-1 rounded shadow-sm">
+                                                                                    {summaryStr}
+                                                                                </span>
+                                                                            </div>
+                                                                        </div>
+                                                                    </td>
+                                                                </tr>
+                                                                {isExpanded && productsInTx.map(product => (
+                                                                    <tr key={product.id} className="border-b hover:bg-gray-50">
+                                                                        <td className="px-3 py-2">
+                                                                            <div>#{product.id}</div>
+                                                                            <div className="text-xs text-gray-500 font-mono">{product.product_code || '-'}</div>
+                                                                        </td>
+                                                                        <td className="px-3 py-2">{product.product_type}</td>
+                                                                        <td className="px-3 py-2 text-right font-medium">
+                                                                            {formatCurrency(product.last_price || 0)}
+                                                                        </td>
+                                                                        <td className="px-3 py-2 text-center">
+                                                                            <Button
+                                                                                variant="ghost"
+                                                                                size="sm"
+                                                                                onClick={() => setSelectedProduct({
+                                                                                    ...product,
+                                                                                    store_name: store.name
+                                                                                })}
+                                                                                className="text-blue-600 hover:text-blue-800"
+                                                                            >
+                                                                                Chuyển kho
+                                                                            </Button>
+                                                                        </td>
+                                                                    </tr>
+                                                                ))}
+                                                            </tbody>
+                                                        );
+                                                    });
+                                                })()}
                                                 <tfoot className="bg-gray-100">
                                                     <tr>
                                                         <td colSpan={2} className="px-3 py-2 font-bold">Tổng</td>
