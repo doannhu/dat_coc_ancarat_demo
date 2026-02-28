@@ -5,13 +5,14 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card'
 import { Input } from '../components/ui/Input';
 import { Button } from '../components/ui/Button';
 import { ContractGenerator } from '../components/ContractGenerator';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, ChevronDown, ChevronRight } from 'lucide-react';
 import styles from './Orders.module.css';
 import { formatTime, formatDate, todayHanoi, startOfMonthHanoi } from '../lib/dateUtils';
 
 // Types (should ideally be shared/generated, but defining here for now)
 interface Product {
     product_type: string;
+    product_code?: string;
     status: string;
     last_price: number;
     store_id: number;
@@ -73,6 +74,19 @@ interface TransactionStats {
     store_stats: StoreStats[];
 }
 
+const getStatusColor = (status: string) => {
+    switch (status) {
+        case 'Đã bán': return 'bg-blue-100 text-blue-800';
+        case 'Có sẵn': return 'bg-green-100 text-green-800';
+        case 'Đã đặt hàng': return 'bg-purple-100 text-purple-800';
+        case 'Đã giao': return 'bg-teal-100 text-teal-800';
+        case 'Đã bán lại NSX': return 'bg-red-100 text-red-800';
+        case 'Đã nhận hàng NSX': return 'bg-orange-100 text-orange-800';
+        case 'Mua lại': return 'bg-indigo-100 text-indigo-800';
+        default: return 'bg-gray-100 text-gray-800';
+    }
+};
+
 export const Orders = () => {
     const navigate = useNavigate();
     const [orders, setOrders] = useState<Transaction[]>([]);
@@ -80,6 +94,19 @@ export const Orders = () => {
     const [startDate, setStartDate] = useState<string>(startOfMonthHanoi());
     const [endDate, setEndDate] = useState<string>(todayHanoi());
     const [loading, setLoading] = useState(false);
+    const [expandedOrders, setExpandedOrders] = useState<Set<number>>(new Set());
+
+    const toggleOrder = (orderId: number) => {
+        setExpandedOrders(prev => {
+            const next = new Set(prev);
+            if (next.has(orderId)) {
+                next.delete(orderId);
+            } else {
+                next.add(orderId);
+            }
+            return next;
+        });
+    };
 
     useEffect(() => {
         fetchOrders();
@@ -344,28 +371,62 @@ export const Orders = () => {
                                             <td className={styles.td}>{order.store?.name || '-'}</td>
                                             <td className={styles.td}>{order.staff?.staff_name || '-'}</td>
                                             <td className={styles.td}>
-                                                <div className="space-y-1">
-                                                    {order.items.map((item, idx) => (
-                                                        <div key={idx} className="text-xs">
-                                                            {item.swapped && item.original_product ? (
-                                                                <div className="space-y-0.5">
-                                                                    <div className="line-through text-gray-400">
-                                                                        #{item.original_product_id} {item.original_product.product_type} - {formatCurrency(item.price_at_time)}
-                                                                    </div>
-                                                                    <div className="flex items-center gap-1">
-                                                                        <span className="px-1 py-0.5 bg-orange-100 text-orange-700 rounded text-[10px] font-medium">Hoán đổi</span>
-                                                                        <span className="font-medium text-orange-700">
-                                                                            → #{item.product_id} {item.product?.product_type || 'Unknown'}
-                                                                        </span>
-                                                                    </div>
-                                                                </div>
-                                                            ) : (
-                                                                <span>
-                                                                    {item.product?.product_type || 'Unknown'} - {formatCurrency(item.price_at_time)}
-                                                                </span>
-                                                            )}
+                                                <div className="space-y-2">
+                                                    <div
+                                                        className="flex items-start gap-2 cursor-pointer hover:bg-gray-50 p-1 rounded -ml-1"
+                                                        onClick={() => toggleOrder(order.id)}
+                                                    >
+                                                        <div className="text-gray-500 mt-0.5">
+                                                            {expandedOrders.has(order.id) ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
                                                         </div>
-                                                    ))}
+                                                        <div className="text-sm font-medium">
+                                                            {Object.entries(order.items.reduce((acc, item) => {
+                                                                const type = item.product?.product_type || 'Unknown';
+                                                                acc[type] = (acc[type] || 0) + 1;
+                                                                return acc;
+                                                            }, {} as Record<string, number>)).map(([type, count]) => `${count} x ${type}`).join(', ')}
+                                                        </div>
+                                                    </div>
+
+                                                    {expandedOrders.has(order.id) && (
+                                                        <div className="pl-6 space-y-3 pb-2 w-max">
+                                                            {order.items.map((item, idx) => (
+                                                                <div key={idx} className="text-xs border-l-2 border-gray-200 pl-3">
+                                                                    {item.swapped && item.original_product ? (
+                                                                        <div className="space-y-1.5">
+                                                                            <div className="line-through text-gray-400">
+                                                                                #{item.original_product_id} • {item.original_product.product_code || '-'} • {item.original_product.product_type} - {formatCurrency(item.price_at_time)}
+                                                                            </div>
+                                                                            <div className="flex items-center gap-1.5">
+                                                                                <span className="px-1 py-0.5 bg-orange-100 text-orange-700 rounded text-[10px] font-medium">Hoán đổi</span>
+                                                                                <span className="font-medium text-orange-700">
+                                                                                    → #{item.product_id} • {item.product?.product_code || '-'} • {item.product?.product_type || 'Unknown'}
+                                                                                </span>
+                                                                            </div>
+                                                                            <div className="mt-1 flex items-center gap-2">
+                                                                                <span className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-medium ${getStatusColor(item.product?.status || '')}`}>
+                                                                                    {item.product?.status || '-'}
+                                                                                </span>
+                                                                                <span className="text-gray-600 font-medium">Giá chốt: {formatCurrency(item.price_at_time)}</span>
+                                                                            </div>
+                                                                        </div>
+                                                                    ) : (
+                                                                        <div className="space-y-1.5">
+                                                                            <div className="font-medium text-gray-900">
+                                                                                #{item.product_id} • {item.product?.product_code || '-'} • {item.product?.product_type || 'Unknown'}
+                                                                            </div>
+                                                                            <div className="flex items-center gap-2">
+                                                                                <span className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-medium ${getStatusColor(item.product?.status || '')}`}>
+                                                                                    {item.product?.status || '-'}
+                                                                                </span>
+                                                                                <span className="text-gray-600 font-medium">Giá chốt: {formatCurrency(item.price_at_time)}</span>
+                                                                            </div>
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    )}
                                                 </div>
                                             </td>
                                             <td className={styles.totalMoney}>
