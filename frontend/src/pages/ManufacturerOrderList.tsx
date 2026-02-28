@@ -325,57 +325,76 @@ export function ManufacturerOrderList() {
                                             </div>
 
                                             {/* Products Table with Switches */}
-                                            {expandedOrders.has(order.id) && (
-                                                <table className="w-full text-sm">
-                                                    <thead className="bg-gray-100">
-                                                        <tr>
-                                                            <th className="px-3 py-2 text-left">Mã sản phẩm</th>
-                                                            <th className="px-3 py-2 text-left">Loại</th>
-                                                            <th className="px-3 py-2 text-left">Cửa hàng nhận</th>
-                                                            <th className="px-3 py-2 text-right">Giá</th>
-                                                            <th className="px-3 py-2 text-center">Trạng thái</th>
-                                                            {/* <th className="px-3 py-2 text-center">Đã nhận hàng NSX</th> */}
-                                                        </tr>
-                                                    </thead>
-                                                    <tbody>
-                                                        {order.items.map((item) => {
-                                                            // const isDelivered = getDeliveryStatus(item.product);
-                                                            const hasChange = deliveryChanges.has(item.product.id);
+                                            {expandedOrders.has(order.id) && (() => {
+                                                const itemsByStore = order.items.reduce((acc, item) => {
+                                                    const storeName = item.product.store?.name || 'Chưa định danh';
+                                                    if (!acc[storeName]) acc[storeName] = [];
+                                                    acc[storeName].push(item);
+                                                    return acc;
+                                                }, {} as Record<string, TransactionItem[]>);
+
+                                                const sortedStores = Object.keys(itemsByStore).sort();
+
+                                                return (
+                                                    <table className="w-full text-sm">
+                                                        <thead className="bg-gray-100">
+                                                            <tr>
+                                                                <th className="px-3 py-2 text-left">Mã sản phẩm</th>
+                                                                <th className="px-3 py-2 text-left">Loại</th>
+                                                                <th className="px-3 py-2 text-right">Giá</th>
+                                                                <th className="px-3 py-2 text-center">Trạng thái</th>
+                                                            </tr>
+                                                        </thead>
+                                                        {sortedStores.map((storeName) => {
+                                                            const storeItems = itemsByStore[storeName];
+                                                            const storeProductTypes = storeItems.reduce((acc, item) => {
+                                                                const type = item.product?.product_type || 'Unknown';
+                                                                acc[type] = (acc[type] || 0) + 1;
+                                                                return acc;
+                                                            }, {} as Record<string, number>);
+                                                            const storeProductSummary = Object.entries(storeProductTypes)
+                                                                .map(([type, count]) => `${count} x ${type}`)
+                                                                .join(', ');
 
                                                             return (
-                                                                <tr
-                                                                    key={item.id}
-                                                                    className={`border-b ${hasChange ? 'bg-yellow-50' : ''}`}
-                                                                >
-                                                                    <td className="px-3 py-2">
-                                                                        <div>#{item.product.id}</div>
-                                                                        <div className="text-xs text-gray-500 font-mono">{item.product.product_code || '-'}</div>
-                                                                    </td>
-                                                                    <td className="px-3 py-2">{item.product.product_type}</td>
-                                                                    <td className="px-3 py-2">{item.product.store?.name || '-'}</td>
-                                                                    <td className="px-3 py-2 text-right">{formatCurrency(item.price_at_time)}</td>
-                                                                    <td className="px-3 py-2 text-center">
-                                                                        <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${getStatusColor(item.product.status)}`}>
-                                                                            {item.product.status}
-                                                                        </span>
-                                                                    </td>
-                                                                    {/* <td className="px-3 py-2">
-                                                                <div className="flex items-center justify-center gap-2">
-                                                                    <IOSSwitch
-                                                                        checked={isDelivered}
-                                                                        onChange={() => handleDeliveryToggle(item.product.id, isDelivered)}
-                                                                    />
-                                                                    <span className={`text-xs ${isDelivered ? 'text-green-600' : 'text-gray-400'}`}>
-                                                                        {isDelivered ? 'Yes' : 'No'}
-                                                                    </span>
-                                                                </div>
-                                                            </td> */}
-                                                                </tr>
+                                                                <tbody key={storeName}>
+                                                                    <tr className="bg-blue-50/50 border-y border-gray-200">
+                                                                        <td colSpan={4} className="px-3 py-2">
+                                                                            <div className="flex justify-between items-center">
+                                                                                <span className="font-bold text-gray-700">{storeName}</span>
+                                                                                <span className="text-xs font-semibold text-gray-600 bg-white border border-gray-200 px-2 py-1 rounded shadow-sm">
+                                                                                    {storeProductSummary}
+                                                                                </span>
+                                                                            </div>
+                                                                        </td>
+                                                                    </tr>
+                                                                    {storeItems.map((item) => {
+                                                                        const hasChange = deliveryChanges.has(item.product.id);
+                                                                        return (
+                                                                            <tr
+                                                                                key={item.id}
+                                                                                className={`border-b ${hasChange ? 'bg-yellow-50' : ''}`}
+                                                                            >
+                                                                                <td className="px-3 py-2">
+                                                                                    <div>#{item.product.id}</div>
+                                                                                    <div className="text-xs text-gray-500 font-mono">{item.product.product_code || '-'}</div>
+                                                                                </td>
+                                                                                <td className="px-3 py-2">{item.product.product_type}</td>
+                                                                                <td className="px-3 py-2 text-right">{formatCurrency(item.price_at_time)}</td>
+                                                                                <td className="px-3 py-2 text-center">
+                                                                                    <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${getStatusColor(item.product.status)}`}>
+                                                                                        {item.product.status}
+                                                                                    </span>
+                                                                                </td>
+                                                                            </tr>
+                                                                        );
+                                                                    })}
+                                                                </tbody>
                                                             );
                                                         })}
-                                                    </tbody>
-                                                </table>
-                                            )}
+                                                    </table>
+                                                );
+                                            })()}
                                         </div>
                                     );
                                 })}
