@@ -16,6 +16,7 @@ interface Product {
     store_name?: string;
     transaction_code?: string;
     order_date?: string;
+    is_ordered?: boolean;
 }
 
 interface Store {
@@ -223,12 +224,14 @@ export function StoreList() {
                                                     </tr>
                                                 </thead>
                                                 {(() => {
-                                                    const groupedByTx = store.products.reduce((acc, product) => {
-                                                        const txCode = product.transaction_code || 'Khác';
-                                                        if (!acc[txCode]) acc[txCode] = [];
-                                                        acc[txCode].push(product);
-                                                        return acc;
-                                                    }, {} as Record<string, Product[]>);
+                                                    const groupedByTx = store.products
+                                                        .filter(product => !(product.status === 'Có sẵn' && !product.is_ordered))
+                                                        .reduce((acc, product) => {
+                                                            const txCode = product.transaction_code || 'Khác';
+                                                            if (!acc[txCode]) acc[txCode] = [];
+                                                            acc[txCode].push(product);
+                                                            return acc;
+                                                        }, {} as Record<string, Product[]>);
 
                                                     const sortedTxCodes = Object.keys(groupedByTx).sort((a, b) => b.localeCompare(a));
 
