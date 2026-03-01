@@ -66,6 +66,7 @@ function ProductPicker({
     onRemove,
     customers,
     availableProducts,
+    stores,
 }: {
     label: string;
     selectedProducts: Product[];
@@ -73,6 +74,7 @@ function ProductPicker({
     onRemove: (productId: number) => void;
     customers: Customer[];
     availableProducts: Product[];
+    stores: Store[];
 }) {
     const [mode, setMode] = useState<'customer' | 'inventory'>('customer');
     const [searchCustomer, setSearchCustomer] = useState('');
@@ -81,6 +83,7 @@ function ProductPicker({
     const [selectedTx, setSelectedTx] = useState<Transaction | null>(null);
     const [loadingTxs, setLoadingTxs] = useState(false);
     const [isPicking, setIsPicking] = useState(true);
+    const [storeFilterId, setStoreFilterId] = useState<number | 'all'>('all');
 
     // Filter customers
     const filteredCustomers = searchCustomer.length > 0
@@ -155,176 +158,190 @@ function ProductPicker({
                     {selectedListUI}
                 </div>
             )}
-            
+
             {isPicking && <>
 
-            {/* Mode tabs */}
-            <div className="flex border-b">
-                <button
-                    className={`flex items-center gap-1.5 px-4 py-2 text-sm font-medium border-b-2 transition-colors ${mode === 'customer'
+                {/* Mode tabs */}
+                <div className="flex border-b">
+                    <button
+                        className={`flex items-center gap-1.5 px-4 py-2 text-sm font-medium border-b-2 transition-colors ${mode === 'customer'
                             ? 'border-purple-500 text-purple-600'
                             : 'border-transparent text-gray-500 hover:text-gray-700'
-                        }`}
-                    onClick={() => setMode('customer')}
-                >
-                    <Users className="h-3.5 w-3.5" />
-                    Đơn khách hàng
-                </button>
-                <button
-                    className={`flex items-center gap-1.5 px-4 py-2 text-sm font-medium border-b-2 transition-colors ${mode === 'inventory'
+                            }`}
+                        onClick={() => setMode('customer')}
+                    >
+                        <Users className="h-3.5 w-3.5" />
+                        Đơn khách hàng
+                    </button>
+                    <button
+                        className={`flex items-center gap-1.5 px-4 py-2 text-sm font-medium border-b-2 transition-colors ${mode === 'inventory'
                             ? 'border-purple-500 text-purple-600'
                             : 'border-transparent text-gray-500 hover:text-gray-700'
-                        }`}
-                    onClick={() => setMode('inventory')}
-                >
-                    <Package className="h-3.5 w-3.5" />
-                    Kho hàng
-                </button>
-            </div>
+                            }`}
+                        onClick={() => setMode('inventory')}
+                    >
+                        <Package className="h-3.5 w-3.5" />
+                        Kho hàng
+                    </button>
+                </div>
 
-            {mode === 'customer' ? (
-                <div className="space-y-3">
-                    {/* Customer search */}
-                    <div className="relative">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                        <Input
-                            className="pl-10 pr-8"
-                            placeholder="Tìm khách hàng..."
-                            value={searchCustomer}
-                            onChange={(e) => {
-                                setSearchCustomer(e.target.value);
-                                if (selectedCustomer) {
-                                    resetCustomerSearch();
+                {mode === 'customer' ? (
+                    <div className="space-y-3">
+                        {/* Customer search */}
+                        <div className="relative">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                            <Input
+                                className="pl-10 pr-8"
+                                placeholder="Tìm khách hàng..."
+                                value={searchCustomer}
+                                onChange={(e) => {
                                     setSearchCustomer(e.target.value);
-                                }
-                            }}
-                        />
-                        {selectedCustomer && (
-                            <button
-                                onClick={resetCustomerSearch}
-                                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                            >
-                                <X className="h-4 w-4" />
-                            </button>
-                        )}
-                    </div>
-
-                    {/* Customer dropdown */}
-                    {searchCustomer && !selectedCustomer && filteredCustomers.length > 0 && (
-                        <div className="max-h-32 overflow-y-auto border rounded bg-white shadow-sm">
-                            {filteredCustomers.slice(0, 8).map(c => (
-                                <div
-                                    key={c.id}
-                                    className="p-2 hover:bg-purple-50 cursor-pointer border-b last:border-b-0 text-sm"
-                                    onClick={() => handleSelectCustomer(c)}
+                                    if (selectedCustomer) {
+                                        resetCustomerSearch();
+                                        setSearchCustomer(e.target.value);
+                                    }
+                                }}
+                            />
+                            {selectedCustomer && (
+                                <button
+                                    onClick={resetCustomerSearch}
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
                                 >
-                                    <div className="font-medium">{c.name}</div>
-                                    <div className="text-xs text-gray-500">{c.phone_number || ''} {c.cccd ? `• ${c.cccd}` : ''}</div>
-                                </div>
-                            ))}
-                        </div>
-                    )}
-
-                    {/* Customer transactions */}
-                    {selectedCustomer && (
-                        <div className="space-y-2">
-                            {loadingTxs ? (
-                                <div className="text-center py-3 text-sm text-gray-500">Đang tải...</div>
-                            ) : customerTxs.length === 0 ? (
-                                <div className="text-center py-3 text-sm text-gray-500">Không có đơn hàng</div>
-                            ) : (
-                                <div className="max-h-48 overflow-y-auto space-y-1">
-                                    {customerTxs.map(tx => {
-                                        const soldItems = tx.items.filter(i => i.product.status === 'Đã bán');
-                                        if (soldItems.length === 0) return null;
-                                        const isOpen = selectedTx?.id === tx.id;
-                                        const selectedIds = selectedProducts.map(sp => sp.id);
-
-                                        return (
-                                            <div key={tx.id} className="border rounded">
-                                                <div
-                                                    className={`p-2 cursor-pointer transition-colors text-sm ${isOpen ? 'bg-purple-50 border-purple-200' : 'hover:bg-gray-50'}`}
-                                                    onClick={() => handleSelectTx(tx)}
-                                                >
-                                                    <div className="flex justify-between items-center">
-                                                        <span className="font-medium">
-                                                            {tx.transaction_code || `#${tx.id}`}
-                                                        </span>
-                                                        <span className="text-xs text-gray-500">
-                                                            {formatDate(tx.created_at)} {formatTime(tx.created_at)}
-                                                        </span>
-                                                    </div>
-                                                    <div className="text-xs text-gray-500">
-                                                        {soldItems.length} SP chưa xử lý • {tx.store?.name || '-'}
-                                                    </div>
-                                                </div>
-                                                {isOpen && (
-                                                    <div className="border-t bg-white">
-                                                        {soldItems.map(item => (
-                                                            <div
-                                                                key={item.product_id}
-                                                                className="flex items-center justify-between px-3 py-2 hover:bg-purple-50 cursor-pointer border-b last:border-b-0 transition-colors"
-                                                                onClick={() => handlePickProduct({
-                                                                    ...item.product,
-                                                                    customer_name: tx.customer?.name
-                                                                })}
-                                                            >
-                                                                <div>
-                                                                    {selectedIds.includes(item.product_id) && <span className="text-xs text-green-600 bg-green-100 px-1 rounded mr-2">Đã chọn</span>}
-                                                                    <span className="font-medium text-sm">#{item.product_id}</span>
-                                                                    <span className="text-sm text-gray-600 ml-2">{item.product.product_type}</span>
-                                                                </div>
-                                                                <span className="text-sm font-medium text-gray-700">
-                                                                    {formatCurrency(item.price_at_time)}
-                                                                </span>
-                                                            </div>
-                                                        ))}
-                                                    </div>
-                                                )}
-                                            </div>
-                                        );
-                                    })}
-                                </div>
+                                    <X className="h-4 w-4" />
+                                </button>
                             )}
                         </div>
-                    )}
-                </div>
-            ) : (
-                /* Inventory mode */
-                <div className="space-y-2">
-                    {availableProducts.length === 0 ? (
-                        <div className="text-center py-4 text-sm text-gray-500">Không có sản phẩm trong kho</div>
-                    ) : (
-                        <div className="max-h-64 overflow-y-auto border rounded">
-                            <table className="w-full text-sm">
-                                <thead className="bg-gray-50 sticky top-0">
-                                    <tr>
-                                        <th className="px-3 py-2 text-left">ID</th>
-                                        <th className="px-3 py-2 text-left">Loại</th>
-                                        <th className="px-3 py-2 text-left">Kho</th>
-                                        <th className="px-3 py-2 text-right">Giá</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {availableProducts.map(p => (
-                                        <tr
-                                            key={p.id}
-                                            
-                                            onClick={() => handlePickProduct(p)}
-                                            className={`border-b hover:bg-green-50 cursor-pointer transition-colors ${selectedProducts.find(sp => sp.id === p.id) ? 'bg-green-100 opacity-60' : ''}`}
-                                        >
-                                            <td className="px-3 py-2 font-medium">#{p.id}</td>
-                                            <td className="px-3 py-2">{p.product_type}</td>
-                                            <td className="px-3 py-2 text-gray-600">{p.store?.name || p.store_name || '-'}</td>
-                                            <td className="px-3 py-2 text-right">{formatCurrency(p.last_price || 0)}</td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
+
+                        {/* Customer dropdown */}
+                        {searchCustomer && !selectedCustomer && filteredCustomers.length > 0 && (
+                            <div className="max-h-32 overflow-y-auto border rounded bg-white shadow-sm">
+                                {filteredCustomers.slice(0, 8).map(c => (
+                                    <div
+                                        key={c.id}
+                                        className="p-2 hover:bg-purple-50 cursor-pointer border-b last:border-b-0 text-sm"
+                                        onClick={() => handleSelectCustomer(c)}
+                                    >
+                                        <div className="font-medium">{c.name}</div>
+                                        <div className="text-xs text-gray-500">{c.phone_number || ''} {c.cccd ? `• ${c.cccd}` : ''}</div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+
+                        {/* Customer transactions */}
+                        {selectedCustomer && (
+                            <div className="space-y-2">
+                                {loadingTxs ? (
+                                    <div className="text-center py-3 text-sm text-gray-500">Đang tải...</div>
+                                ) : customerTxs.length === 0 ? (
+                                    <div className="text-center py-3 text-sm text-gray-500">Không có đơn hàng</div>
+                                ) : (
+                                    <div className="max-h-48 overflow-y-auto space-y-1">
+                                        {customerTxs.map(tx => {
+                                            const soldItems = tx.items.filter(i => i.product.status === 'Đã bán');
+                                            if (soldItems.length === 0) return null;
+                                            const isOpen = selectedTx?.id === tx.id;
+                                            const selectedIds = selectedProducts.map(sp => sp.id);
+
+                                            return (
+                                                <div key={tx.id} className="border rounded">
+                                                    <div
+                                                        className={`p-2 cursor-pointer transition-colors text-sm ${isOpen ? 'bg-purple-50 border-purple-200' : 'hover:bg-gray-50'}`}
+                                                        onClick={() => handleSelectTx(tx)}
+                                                    >
+                                                        <div className="flex justify-between items-center">
+                                                            <span className="font-medium">
+                                                                {tx.transaction_code || `#${tx.id}`}
+                                                            </span>
+                                                            <span className="text-xs text-gray-500">
+                                                                {formatDate(tx.created_at)} {formatTime(tx.created_at)}
+                                                            </span>
+                                                        </div>
+                                                        <div className="text-xs text-gray-500">
+                                                            {soldItems.length} SP chưa xử lý • {tx.store?.name || '-'}
+                                                        </div>
+                                                    </div>
+                                                    {isOpen && (
+                                                        <div className="border-t bg-white">
+                                                            {soldItems.map(item => (
+                                                                <div
+                                                                    key={item.product_id}
+                                                                    className="flex items-center justify-between px-3 py-2 hover:bg-purple-50 cursor-pointer border-b last:border-b-0 transition-colors"
+                                                                    onClick={() => handlePickProduct({
+                                                                        ...item.product,
+                                                                        customer_name: tx.customer?.name
+                                                                    })}
+                                                                >
+                                                                    <div>
+                                                                        {selectedIds.includes(item.product_id) && <span className="text-xs text-green-600 bg-green-100 px-1 rounded mr-2">Đã chọn</span>}
+                                                                        <span className="font-medium text-sm">#{item.product_id}</span>
+                                                                        <span className="text-sm text-gray-600 ml-2">{item.product.product_type}</span>
+                                                                    </div>
+                                                                    <span className="text-sm font-medium text-gray-700">
+                                                                        {formatCurrency(item.price_at_time)}
+                                                                    </span>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                    </div>
+                ) : (
+                    /* Inventory mode */
+                    <div className="space-y-2">
+                        <div className="mb-2">
+                            <select
+                                className="w-full border rounded-md px-3 py-2 text-sm"
+                                value={storeFilterId}
+                                onChange={(e) => setStoreFilterId(e.target.value === 'all' ? 'all' : Number(e.target.value))}
+                            >
+                                <option value="all">Tất cả cửa hàng</option>
+                                {stores.map(s => (
+                                    <option key={s.id} value={s.id}>{s.name}</option>
+                                ))}
+                            </select>
                         </div>
-                    )}
-                </div>
-            )}
+                        {(() => {
+                            const filteredAvailableProducts = availableProducts.filter(p => storeFilterId === 'all' || p.store?.id === storeFilterId || p.store_id === storeFilterId);
+                            if (filteredAvailableProducts.length === 0) return <div className="text-center py-4 text-sm text-gray-500">Không có sản phẩm trong kho</div>;
+                            return (
+                                <div className="max-h-64 overflow-y-auto border rounded">
+                                    <table className="w-full text-sm">
+                                        <thead className="bg-gray-50 sticky top-0">
+                                            <tr>
+                                                <th className="px-3 py-2 text-left">ID</th>
+                                                <th className="px-3 py-2 text-left">Loại</th>
+                                                <th className="px-3 py-2 text-left">Kho</th>
+                                                <th className="px-3 py-2 text-right">Giá</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {filteredAvailableProducts.map(p => (
+                                                <tr
+                                                    key={p.id}
+
+                                                    onClick={() => handlePickProduct(p)}
+                                                    className={`border-b hover:bg-green-50 cursor-pointer transition-colors ${selectedProducts.find(sp => sp.id === p.id) ? 'bg-green-100 opacity-60' : ''}`}
+                                                >
+                                                    <td className="px-3 py-2 font-medium">#{p.id}</td>
+                                                    <td className="px-3 py-2">{p.product_type}</td>
+                                                    <td className="px-3 py-2 text-gray-600">{p.store?.name || p.store_name || '-'}</td>
+                                                    <td className="px-3 py-2 text-right">{formatCurrency(p.last_price || 0)}</td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            );
+                        })()}
+                    </div>
+                )}
             </>}
         </div>
     );
@@ -400,12 +417,12 @@ export function SwapProducts() {
         if (products1.length === 0 || products2.length === 0) return;
         if (!selectedStaffId) { setError('Vui lòng chọn nhân viên'); return; }
         if (!selectedStoreId) { setError('Vui lòng chọn cửa hàng'); return; }
-        
+
         const p1Ids = products1.map(p => p.id);
         const p2Ids = products2.map(p => p.id);
-        if (p1Ids.some(id => p2Ids.includes(id))) { 
-            setError('Không thể hoán đổi cùng một sản phẩm (Sản phẩm bị trùng lặp giữa 2 nhóm)'); 
-            return; 
+        if (p1Ids.some(id => p2Ids.includes(id))) {
+            setError('Không thể hoán đổi cùng một sản phẩm (Sản phẩm bị trùng lặp giữa 2 nhóm)');
+            return;
         }
 
         setLoading(true);
@@ -431,7 +448,7 @@ export function SwapProducts() {
         }
     };
 
-    const isValidSwap = products1.length > 0 && products2.length > 0 && !products1.some(p => products2.map(x=>x.id).includes(p.id)) && (
+    const isValidSwap = products1.length > 0 && products2.length > 0 && !products1.some(p => products2.map(x => x.id).includes(p.id)) && (
         (products1.every(p => p.status === 'Đã bán') && products2.every(p => p.status === 'Có sẵn')) ||
         (products2.every(p => p.status === 'Đã bán') && products1.every(p => p.status === 'Có sẵn')) ||
         (products1.every(p => p.status === 'Đã bán') && products2.every(p => p.status === 'Đã bán'))
@@ -506,6 +523,7 @@ export function SwapProducts() {
                                 onRemove={(pid) => setProducts1(products1.filter(p => p.id !== pid))}
                                 customers={customers}
                                 availableProducts={availableProducts}
+                                stores={storeList}
                             />
                         </CardContent>
                     </Card>
@@ -522,6 +540,7 @@ export function SwapProducts() {
                                 onRemove={(pid) => setProducts2(products2.filter(p => p.id !== pid))}
                                 customers={customers}
                                 availableProducts={availableProducts}
+                                stores={storeList}
                             />
                         </CardContent>
                     </Card>
