@@ -308,7 +308,7 @@ function ProductPicker({
                             </select>
                         </div>
                         {(() => {
-                            const filteredAvailableProducts = availableProducts.filter(p => storeFilterId === 'all' || p.store?.id === storeFilterId || p.store_id === storeFilterId);
+                            const filteredAvailableProducts = availableProducts.filter(p => !(p.status === 'Có sẵn' && !p.is_ordered) && (storeFilterId === 'all' || p.store?.id === storeFilterId || p.store_id === storeFilterId));
                             if (filteredAvailableProducts.length === 0) return <div className="text-center py-4 text-sm text-gray-500">Không có sản phẩm trong kho</div>;
                             return (
                                 <div className="max-h-64 overflow-y-auto border rounded">
