@@ -98,6 +98,14 @@ class ProductService:
                 latest_tx = sorted_txs[0]
                 p.transaction_code = latest_tx.code
                 p.order_date = latest_tx.created_at
+                
+                if p.status == ProductStatus.AVAILABLE and getattr(p, 'is_ordered', False):
+                    # Find transaction with a valid 'code' column (not transaction_code)
+                    for tx in sorted_txs:
+                        if getattr(tx, 'code', None):
+                            p.transaction_code = tx.code
+                            p.order_date = tx.created_at
+                            break
         return products
 
     async def move_product(self, product_id: int, new_store_id: int) -> Product:

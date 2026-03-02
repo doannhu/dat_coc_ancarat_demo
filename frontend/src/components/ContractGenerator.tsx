@@ -133,11 +133,11 @@ function formatContractDate(dateStr: string): { day: string; month: string; year
 function getProductLabel(productType: string): { name: string; purity: string } {
     // Map product_type to display labels
     if (productType.includes('5 lượng') || productType.includes('5L')) {
-        return { name: 'Bạc Ancarat 999 5L', purity: '999' };
+        return { name: 'Bạc Ancarat Ngân Long Quảng Tiến 999 5L', purity: '999' };
     } else if (productType.includes('1 lượng') || productType.includes('1L')) {
-        return { name: 'Bạc Ancarat 999 1L', purity: '999' };
+        return { name: 'Bạc Ancarat Ngân Long Quảng Tiến 999 1L', purity: '999' };
     } else if (productType.includes('1 kg') || productType.includes('1KG')) {
-        return { name: 'Bạc Ancarat 999 1KG', purity: '999' };
+        return { name: 'Bạc Ancarat Ngân Long Quảng Tiến 999 1KG', purity: '999' };
     }
     return { name: productType, purity: '999' };
 }
