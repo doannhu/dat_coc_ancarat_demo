@@ -269,7 +269,7 @@ export function ContractGenerator({ order }: ContractGeneratorProps) {
                                     fontFamily: '"Times New Roman", Times, serif',
                                     lineHeight: 1.4,
                                     color: '#000',
-                                    fontSize: '14px',
+                                    fontSize: '13px',
                                     textAlign: 'left',
                                     position: 'relative'
                                 }}>
@@ -290,13 +290,13 @@ export function ContractGenerator({ order }: ContractGeneratorProps) {
                                     {/* Content Container to ensure text stays above watermark */}
                                     <div style={{ position: 'relative', zIndex: 1 }}>
                                         {/* Contract ID */}
-                                        <div style={{ textAlign: 'right', fontSize: '14px' }}>
+                                        <div style={{ textAlign: 'right', fontSize: '13px' }}>
                                             Số: {contractId}
                                         </div>
 
                                         {/* Header */}
                                         <div style={{ textAlign: 'center', marginBottom: '20px' }}>
-                                            <h2 style={{ margin: '5px 0', fontSize: '18px', textTransform: 'uppercase', fontWeight: 'bold' }}>
+                                            <h2 style={{ margin: '5px 0', fontSize: '17px', textTransform: 'uppercase', fontWeight: 'bold' }}>
                                                 CỘNG HOÀ XÃ HỘI CHỦ NGHĨA VIỆT NAM
                                             </h2>
                                             <p style={{ margin: '2px 0', fontWeight: 'bold' }}>Độc lập - Tự do - Hạnh phúc</p>
@@ -305,10 +305,10 @@ export function ContractGenerator({ order }: ContractGeneratorProps) {
 
                                         {/* Title */}
                                         <div style={{ textAlign: 'center', marginTop: '30px', marginBottom: '20px' }}>
-                                            <h1 style={{ fontSize: '20px', marginBottom: '5px', fontWeight: 'bold' }}>
+                                            <h1 style={{ fontSize: '19px', marginBottom: '5px', fontWeight: 'bold' }}>
                                                 HỢP ĐỒNG BÁN HÀNG TRẢ CHẬM
                                             </h1>
-                                            <h1 style={{ fontSize: '20px', marginBottom: '5px', fontWeight: 'bold' }}>
+                                            <h1 style={{ fontSize: '19px', marginBottom: '5px', fontWeight: 'bold' }}>
                                                 KIÊM XÁC NHẬN THU TIỀN
                                             </h1>
                                         </div>
@@ -330,8 +330,7 @@ export function ContractGenerator({ order }: ContractGeneratorProps) {
                                             <div style={{ marginTop: '15px', marginBottom: '5px' }}>
                                                 <strong>Bên B (Bên mua):</strong>{' '}
                                                 {customer?.name || '.....................................................................................................'}<br />
-                                                CCCD/Hộ chiếu số: {customer?.cccd || '......................................'}{' '}
-                                                Ngày cấp: .................... Nơi cấp: CCS<br />
+                                                CCCD/Hộ chiếu số: {customer?.cccd || '......................................'}{' '}<br />
                                                 Địa chỉ thường trú:{' '}
                                                 {customer?.address || '...................................................................................................'}<br />
                                                 Điện thoại:{' '}
@@ -349,7 +348,7 @@ export function ContractGenerator({ order }: ContractGeneratorProps) {
                                             width: '100%',
                                             borderCollapse: 'collapse',
                                             margin: '15px 0',
-                                            fontSize: '14px'
+                                            fontSize: '13px'
                                         }}>
                                             <thead>
                                                 <tr>
