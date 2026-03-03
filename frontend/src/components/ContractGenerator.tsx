@@ -462,12 +462,15 @@ export function ContractGenerator({ order }: ContractGeneratorProps) {
                                         <div style={{ marginTop: '40px', display: 'flex', justifyContent: 'space-between' }}>
                                             <div style={{ textAlign: 'center', width: '45%' }}>
                                                 <strong>BÊN B</strong><br />
-                                                (Ký, ghi rõ họ tên)
+                                                <strong></strong><br />
+                                                <strong>{customer?.name}</strong><br />
                                             </div>
                                             <div style={{ textAlign: 'center', width: '45%' }}>
                                                 <strong>BÊN A</strong><br />
-                                                (Ký tên và đóng dấu)
-                                                <div style={{
+                                                <strong></strong><br />
+                                                <strong>Doanh nghiệp Tư nhân</strong><br />
+                                                <strong>Vàng Bạc Hoa Tùng</strong><br />
+                                                {/* <div style={{
                                                     height: '100px',
                                                     color: '#ccc',
                                                     fontStyle: 'italic',
@@ -476,7 +479,7 @@ export function ContractGenerator({ order }: ContractGeneratorProps) {
                                                     justifyContent: 'center'
                                                 }}>
                                                     (Đã thu tiền)
-                                                </div>
+                                                </div> */}
                                             </div>
                                         </div>
                                     </div> {/* Closing relative zIndex container */}
