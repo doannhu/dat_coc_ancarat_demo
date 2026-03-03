@@ -27,7 +27,7 @@ export function EditOrderList() {
     const [endDate, setEndDate] = useState(todayHanoi());
     const [transactions, setTransactions] = useState<Transaction[]>([]);
     const [loading, setLoading] = useState(false);
-    const [filterType, setFilterType] = useState<'all' | 'Đơn cọc' | 'Đặt hàng NSX'>('all');
+    const [filterType, setFilterType] = useState<'all' | 'Đơn cọc' | 'Đặt hàng NSX' | 'Mua lại' | 'Hoán đổi'>('all');
 
     useEffect(() => {
         fetchTransactions();
@@ -51,7 +51,7 @@ export function EditOrderList() {
 
             // Filter only relevant types
             const relevant = res.data.filter((t: Transaction) =>
-                t.type === 'Đơn cọc' || t.type === 'Đặt hàng NSX'
+                t.type === 'Đơn cọc' || t.type === 'Đặt hàng NSX' || t.type === 'Mua lại' || t.type === 'Hoán đổi'
             );
 
             setTransactions(relevant);
@@ -114,6 +114,18 @@ export function EditOrderList() {
                             >
                                 Đơn cọc NSX
                             </Button>
+                            <Button
+                                variant={filterType === 'Mua lại' ? undefined : 'outline'}
+                                onClick={() => setFilterType('Mua lại')}
+                            >
+                                Mua lại
+                            </Button>
+                            <Button
+                                variant={filterType === 'Hoán đổi' ? undefined : 'outline'}
+                                onClick={() => setFilterType('Hoán đổi')}
+                            >
+                                Hoán đổi
+                            </Button>
                         </div>
                     </CardContent>
                 </Card>
@@ -145,7 +157,7 @@ export function EditOrderList() {
                                                     {t.transaction_code || `#${t.id}`}
                                                 </td>
                                                 <td className="px-4 py-3">
-                                                    <span className={`px-2 py-1 rounded text-xs font-semibold ${t.type === 'Đơn cọc' ? 'bg-green-100 text-green-800' : 'bg-purple-100 text-purple-800'
+                                                    <span className={`px-2 py-1 rounded text-xs font-semibold ${t.type === 'Đơn cọc' ? 'bg-green-100 text-green-800' : t.type === 'Mua lại' ? 'bg-blue-100 text-blue-800' : t.type === 'Hoán đổi' ? 'bg-orange-100 text-orange-800' : 'bg-purple-100 text-purple-800'
                                                         }`}>
                                                         {t.type}
                                                     </span>
@@ -154,7 +166,7 @@ export function EditOrderList() {
                                                     {formatDate(t.created_at)} {formatTime(t.created_at)}
                                                 </td>
                                                 <td className="px-4 py-3">
-                                                    {t.type === 'Đơn cọc' ? (
+                                                    {t.type === 'Đơn cọc' || t.type === 'Mua lại' || t.type === 'Hoán đổi' ? (
                                                         <div>
                                                             <div className="font-medium">{t.customer?.name || '-'}</div>
                                                             <div className="text-xs text-gray-500">{t.customer?.phone_number}</div>
@@ -172,7 +184,7 @@ export function EditOrderList() {
                                                         size="sm"
                                                         variant="outline"
                                                         onClick={() => navigate(
-                                                            t.type === 'Đơn cọc'
+                                                            (t.type === 'Đơn cọc' || t.type === 'Mua lại' || t.type === 'Hoán đổi')
                                                                 ? `/edit-order/${t.id}`
                                                                 : `/edit-manufacturer-order/${t.id}`
                                                         )}
