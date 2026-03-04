@@ -59,7 +59,7 @@ export function NewOrder() {
 
     const fetchAvailableProducts = async () => {
         try {
-            const res = await axios.get('/api/v1/products/available');
+            const res = await axios.get('/api/v1/products/available?limit=1000');
             setAvailableProducts(res.data);
         } catch (e) {
             console.error("Failed to fetch available products", e);
@@ -70,7 +70,7 @@ export function NewOrder() {
         try {
             // Mocking search via list for now
             const res = await axios.get('/api/v1/customers/?limit=100');
-            setCustomers(res.data);
+            setCustomers(res.data.items);
         } catch (e) { console.error(e); }
     };
 

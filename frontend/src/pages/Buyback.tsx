@@ -92,7 +92,7 @@ export function Buyback() {
         setIsSearching(true);
         try {
             const res = await axios.get(`/api/v1/customers/?search=${query}&limit=20`);
-            setCustomers(res.data);
+            setCustomers(res.data.items);
         } catch (e) {
             console.error("Failed to fetch customers", e);
         } finally {

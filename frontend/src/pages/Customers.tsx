@@ -17,18 +17,26 @@ interface Customer {
 export function Customers() {
     const navigate = useNavigate();
     const [customers, setCustomers] = useState<Customer[]>([]);
+    const [totalCustomers, setTotalCustomers] = useState(0);
     const [searchQuery, setSearchQuery] = useState('');
     const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
     const [editForm, setEditForm] = useState<Partial<Customer>>({});
+    const [currentPage, setCurrentPage] = useState(1);
+    const [pageSize, setPageSize] = useState(50);
 
     useEffect(() => {
-        fetchCustomers();
-    }, []);
+        const timeoutId = setTimeout(() => {
+            fetchCustomers();
+        }, 300);
+        return () => clearTimeout(timeoutId);
+    }, [currentPage, pageSize, searchQuery]);
 
     const fetchCustomers = async () => {
         try {
-            const res = await axios.get('/api/v1/customers/?limit=1000');
-            setCustomers(res.data);
+            const skip = (currentPage - 1) * pageSize;
+            const res = await axios.get(`/api/v1/customers/?skip=${skip}&limit=${pageSize}&search=${encodeURIComponent(searchQuery)}`);
+            setCustomers(res.data.items);
+            setTotalCustomers(res.data.total);
         } catch (e) {
             console.error("Failed to fetch customers", e);
         }
@@ -52,11 +60,7 @@ export function Customers() {
         }
     };
 
-    const filteredCustomers = customers.filter(c =>
-        c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (c.phone_number && c.phone_number.includes(searchQuery)) ||
-        (c.cccd && c.cccd.includes(searchQuery))
-    );
+    const totalPages = Math.ceil(totalCustomers / pageSize);
 
     return (
         <div className="min-h-screen bg-gray-50 p-6">
@@ -83,7 +87,10 @@ export function Customers() {
                                     className="pl-10"
                                     placeholder="Tìm kiếm theo tên, số điện thoại, CCCD..."
                                     value={searchQuery}
-                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                    onChange={(e) => {
+                                        setSearchQuery(e.target.value);
+                                        setCurrentPage(1);
+                                    }}
                                 />
                             </div>
                         </div>
@@ -101,7 +108,7 @@ export function Customers() {
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-200 bg-white">
-                                    {filteredCustomers.map(customer => (
+                                    {customers.map(customer => (
                                         <tr key={customer.id} className="hover:bg-gray-50">
                                             <td className="p-3 font-medium">#{customer.id}</td>
                                             <td className="p-3">{customer.name}</td>
@@ -120,7 +127,7 @@ export function Customers() {
                                             </td>
                                         </tr>
                                     ))}
-                                    {filteredCustomers.length === 0 && (
+                                    {customers.length === 0 && (
                                         <tr>
                                             <td colSpan={6} className="p-4 text-center text-gray-500">
                                                 Không tìm thấy khách hàng nào
@@ -129,6 +136,48 @@ export function Customers() {
                                     )}
                                 </tbody>
                             </table>
+                        </div>
+
+                        {/* Pagination Controls */}
+                        <div className="flex justify-between items-center mt-4 pt-4 border-t">
+                            <div className="flex items-center gap-2 text-sm text-gray-600">
+                                <span>Hiển thị</span>
+                                <select
+                                    className="border rounded p-1"
+                                    value={pageSize}
+                                    onChange={(e) => {
+                                        setPageSize(Number(e.target.value));
+                                        setCurrentPage(1);
+                                    }}
+                                >
+                                    <option value={50}>50</option>
+                                    <option value={75}>75</option>
+                                    <option value={100}>100</option>
+                                </select>
+                                <span>khách hàng mỗi trang</span>
+                            </div>
+
+                            <div className="flex items-center gap-2">
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                                    disabled={currentPage === 1}
+                                >
+                                    Trước
+                                </Button>
+                                <span className="text-sm">
+                                    Trang {currentPage} / {totalPages || 1}
+                                </span>
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                                    disabled={currentPage >= totalPages || totalPages === 0}
+                                >
+                                    Sau
+                                </Button>
+                            </div>
                         </div>
                     </CardContent>
                 </Card>

@@ -25,6 +25,28 @@ class CustomerRepository:
         result = await self.db.execute(query.offset(skip).limit(limit))
         return result.scalars().all()
 
+    async def get_multi_and_count(self, skip: int = 0, limit: int = 100, search: str = None):
+        query = select(Customer)
+        if search:
+            from sqlalchemy import or_
+            search_pattern = f"%{search}%"
+            query = query.where(
+                or_(
+                    Customer.name.ilike(search_pattern),
+                    Customer.phone_number.ilike(search_pattern),
+                    Customer.cccd.ilike(search_pattern)
+                )
+            )
+
+        from sqlalchemy import func
+        count_query = select(func.count()).select_from(query.subquery())
+        count_result = await self.db.execute(count_query)
+        total = count_result.scalar_one()
+
+        result = await self.db.execute(query.offset(skip).limit(limit))
+        items = result.scalars().all()
+        return items, total
+
     async def create(self, obj_in: customer_schema.CustomerCreate):
         db_obj = Customer(
             name=obj_in.name,

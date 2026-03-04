@@ -61,7 +61,7 @@ export function EditOrder() {
                 const orderData = orderRes.data;
                 setOrder(orderData);
                 setStores(storesRes.data);
-                setCustomers(customersRes.data);
+                setCustomers(customersRes.data.items);
 
                 // Init Form
                 setSelectedStore(orderData.store_id);

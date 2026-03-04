@@ -24,3 +24,8 @@ class Customer(CustomerInDBBase):
 
 class CustomerList(BaseModel):
     customers: List[Customer]
+
+class CustomerPaginatedResponse(BaseModel):
+    items: List[Customer]
+    total: int
+

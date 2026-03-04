@@ -13,14 +13,15 @@ def get_service(db: AsyncSession = Depends(get_db)) -> CustomerService:
     repository = CustomerRepository(db)
     return CustomerService(repository)
 
-@router.get("/", response_model=List[customer_schema.CustomerInDBBase])
+@router.get("/", response_model=customer_schema.CustomerPaginatedResponse)
 async def read_customers(
     skip: int = 0, 
     limit: int = 100, 
     search: Optional[str] = None,
     service: CustomerService = Depends(get_service)
 ):
-    return await service.get_customers(skip=skip, limit=limit, search=search)
+    items, total = await service.get_customers_paginated(skip=skip, limit=limit, search=search)
+    return {"items": items, "total": total}
 
 @router.post("/", response_model=customer_schema.CustomerInDBBase)
 async def create_customer(

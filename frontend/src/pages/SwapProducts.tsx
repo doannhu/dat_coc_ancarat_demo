@@ -398,7 +398,7 @@ export function SwapProducts() {
     const fetchCustomers = async () => {
         try {
             const res = await axios.get('/api/v1/customers/?limit=200');
-            setCustomers(res.data);
+            setCustomers(res.data.items);
         } catch (e) {
             console.error("Failed to fetch customers", e);
         }
