@@ -13,6 +13,13 @@ interface Customer { id: number; name: string; phone_number: string; cccd: strin
 interface OrderItem { product_type: string; quantity: number; price: number; is_new: boolean; product_id?: number; }
 interface AvailableProduct { id: number; product_type: string; last_price: number; store_id: number; store_name: string; }
 
+const toTitleCase = (str: string) => {
+    if (!str) return '';
+    return str.split(' ').map(word =>
+        word.length > 0 ? word.charAt(0).toUpperCase() + word.slice(1).toLowerCase() : ''
+    ).join(' ');
+};
+
 export function NewOrder() {
     const navigate = useNavigate();
 
@@ -262,10 +269,10 @@ export function NewOrder() {
                             ) : (
                                 <div className="space-y-3 border p-3 rounded">
                                     <h4 className="font-semibold">Khách hàng mới</h4>
-                                    <Input placeholder="Tên" value={newCustomer.name} onChange={e => setNewCustomer({ ...newCustomer, name: e.target.value })} />
+                                    <Input placeholder="Tên" value={newCustomer.name} onChange={e => setNewCustomer({ ...newCustomer, name: toTitleCase(e.target.value) })} />
                                     <Input placeholder="Số điện thoại" value={newCustomer.phone_number} onChange={e => setNewCustomer({ ...newCustomer, phone_number: e.target.value })} />
                                     <Input placeholder="CCCD" value={newCustomer.cccd} onChange={e => setNewCustomer({ ...newCustomer, cccd: e.target.value })} />
-                                    <Input placeholder="Địa chỉ" value={newCustomer.address} onChange={e => setNewCustomer({ ...newCustomer, address: e.target.value })} />
+                                    <Input placeholder="Địa chỉ" value={newCustomer.address} onChange={e => setNewCustomer({ ...newCustomer, address: toTitleCase(e.target.value) })} />
                                     <div className="flex gap-2">
                                         <Button onClick={createCustomer}>Lưu</Button>
                                         <Button variant="ghost" onClick={() => setIsCreatingCustomer(false)}>Cancel</Button>
