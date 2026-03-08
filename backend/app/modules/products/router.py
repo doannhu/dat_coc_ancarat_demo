@@ -113,6 +113,13 @@ async def read_product(
         raise HTTPException(status_code=404, detail="Product not found")
     return product
 
+@router.get("/{id}/transactions")
+async def read_product_transactions(
+    id: int, 
+    service: ProductService = Depends(get_service)
+):
+    return await service.get_product_transactions(product_id=id)
+
 @router.put("/{id}", response_model=product_schema.ProductInDBBase)
 async def update_product(
     id: int, 

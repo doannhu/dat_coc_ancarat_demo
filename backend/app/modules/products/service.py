@@ -128,6 +128,23 @@ class ProductService:
     async def delete_product(self, product_id: int):
         return await self.repository.remove(id=product_id)
 
+    async def get_product_transactions(self, product_id: int):
+        product = await self.repository.get(id=product_id)
+        if not product:
+            return []
+        
+        results = []
+        for t in product.transactions:
+            if t.code:
+                results.append({
+                    "transaction_id": t.id,
+                    "code": t.code,
+                    "type": t.type,
+                    "created_at": t.created_at.isoformat()
+                })
+        results.sort(key=lambda x: x["created_at"], reverse=True)
+        return results
+
     async def get_status_info(self, product_ids: List[int]) -> List[schemas.ProductStatusInfo]:
         """Get detailed status info (Sale/Buyback/Swap history) for products"""
         if not product_ids:

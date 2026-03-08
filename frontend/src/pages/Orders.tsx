@@ -74,6 +74,13 @@ interface TransactionStats {
     store_stats: StoreStats[];
 }
 
+interface ProductTransaction {
+    transaction_id: number;
+    code: string;
+    type: string;
+    created_at: string;
+}
+
 const getStatusColor = (status: string) => {
     switch (status) {
         case 'Đã bán': return 'bg-blue-100 text-blue-800';
@@ -95,6 +102,7 @@ export const Orders = () => {
     const [endDate, setEndDate] = useState<string>(todayHanoi());
     const [loading, setLoading] = useState(false);
     const [expandedOrders, setExpandedOrders] = useState<Set<number>>(new Set());
+    const [expandedProducts, setExpandedProducts] = useState<Record<number, ProductTransaction[] | null>>({});
 
     const toggleOrder = (orderId: number) => {
         setExpandedOrders(prev => {
@@ -106,6 +114,34 @@ export const Orders = () => {
             }
             return next;
         });
+    };
+
+    const toggleProductTx = async (productId: number) => {
+        setExpandedProducts(prev => {
+            const next = { ...prev };
+            if (next[productId] !== undefined) {
+                delete next[productId];
+                return next;
+            } else {
+                next[productId] = null; // loading
+                return next;
+            }
+        });
+
+        // If it wasn't expanded, we fetch
+        if (expandedProducts[productId] === undefined) {
+            try {
+                const res = await axios.get(`/api/v1/products/${productId}/transactions`);
+                setExpandedProducts(prev => ({ ...prev, [productId]: res.data }));
+            } catch (e) {
+                console.error(e);
+                setExpandedProducts(prev => {
+                    const next = { ...prev };
+                    delete next[productId];
+                    return next;
+                });
+            }
+        }
     };
 
     useEffect(() => {
@@ -399,12 +435,44 @@ export const Orders = () => {
                                                                     {item.swapped && item.original_product ? (
                                                                         <div className="space-y-1.5">
                                                                             <div className="line-through text-gray-400">
-                                                                                #{item.original_product_id} • {item.original_product.product_code || '-'} • {item.original_product.product_type} - {formatCurrency(item.price_at_time)}
+                                                                                <span
+                                                                                    className="cursor-pointer hover:underline"
+                                                                                    onClick={() => toggleProductTx(item.original_product_id!)}
+                                                                                >
+                                                                                    #{item.original_product_id}
+                                                                                </span> • {item.original_product.product_code || '-'} • {item.original_product.product_type} - {formatCurrency(item.price_at_time)}
                                                                             </div>
+                                                                            {item.original_product_id && expandedProducts[item.original_product_id] !== undefined && (
+                                                                                <div className="ml-4 mt-1 mb-2 max-w-[250px] bg-white border border-gray-200 shadow-sm rounded p-2 z-10 relative">
+                                                                                    <div className="font-semibold text-[10px] text-gray-500 mb-1 uppercase tracking-wider">Lịch sử SP #{item.original_product_id}</div>
+                                                                                    {expandedProducts[item.original_product_id] === null ? (
+                                                                                        <div className="text-[10px] text-gray-400">Đang tải...</div>
+                                                                                    ) : expandedProducts[item.original_product_id]?.length === 0 ? (
+                                                                                        <div className="text-[10px] text-gray-400">Không có giao dịch.</div>
+                                                                                    ) : (
+                                                                                        <div className="space-y-1">
+                                                                                            {expandedProducts[item.original_product_id]?.map(tx => (
+                                                                                                <div key={tx.transaction_id} className="flex justify-between items-center bg-gray-50 p-1.5 rounded border border-gray-100">
+                                                                                                    <div className="flex flex-col">
+                                                                                                        <span className="font-bold text-[11px] text-indigo-600">{tx.code}</span>
+                                                                                                        <span className="text-[9px] text-gray-500">{formatDate(tx.created_at)}</span>
+                                                                                                    </div>
+                                                                                                    <span className="text-[9px] px-1 py-0.5 bg-blue-100 text-blue-700 rounded">{tx.type}</span>
+                                                                                                </div>
+                                                                                            ))}
+                                                                                        </div>
+                                                                                    )}
+                                                                                </div>
+                                                                            )}
                                                                             <div className="flex items-center gap-1.5">
                                                                                 <span className="px-1 py-0.5 bg-orange-100 text-orange-700 rounded text-[10px] font-medium">Hoán đổi</span>
                                                                                 <span className="font-medium text-orange-700">
-                                                                                    → #{item.product_id} • {item.product?.product_code || '-'} • {item.product?.product_type || 'Unknown'}
+                                                                                    → <span
+                                                                                        className="cursor-pointer hover:underline"
+                                                                                        onClick={() => toggleProductTx(item.product_id)}
+                                                                                    >
+                                                                                        #{item.product_id}
+                                                                                    </span> • {item.product?.product_code || '-'} • {item.product?.product_type || 'Unknown'}
                                                                                 </span>
                                                                             </div>
                                                                             <div className="mt-1 flex items-center gap-2">
@@ -413,11 +481,39 @@ export const Orders = () => {
                                                                                 </span>
                                                                                 <span className="text-gray-600 font-medium">Giá chốt: {formatCurrency(item.price_at_time)}</span>
                                                                             </div>
+
+                                                                            {expandedProducts[item.product_id] !== undefined && (
+                                                                                <div className="ml-4 mt-1 mb-2 max-w-[250px] bg-white border border-gray-200 shadow-sm rounded p-2 z-10 relative">
+                                                                                    <div className="font-semibold text-[10px] text-gray-500 mb-1 uppercase tracking-wider">Lịch sử SP #{item.product_id}</div>
+                                                                                    {expandedProducts[item.product_id] === null ? (
+                                                                                        <div className="text-[10px] text-gray-400">Đang tải...</div>
+                                                                                    ) : expandedProducts[item.product_id]?.length === 0 ? (
+                                                                                        <div className="text-[10px] text-gray-400">Không có giao dịch.</div>
+                                                                                    ) : (
+                                                                                        <div className="space-y-1">
+                                                                                            {expandedProducts[item.product_id]?.map(tx => (
+                                                                                                <div key={tx.transaction_id} className="flex justify-between items-center bg-gray-50 p-1.5 rounded border border-gray-100">
+                                                                                                    <div className="flex flex-col">
+                                                                                                        <span className="font-bold text-[11px] text-indigo-600">{tx.code}</span>
+                                                                                                        <span className="text-[9px] text-gray-500">{formatDate(tx.created_at)}</span>
+                                                                                                    </div>
+                                                                                                    <span className="text-[9px] px-1 py-0.5 bg-blue-100 text-blue-700 rounded">{tx.type}</span>
+                                                                                                </div>
+                                                                                            ))}
+                                                                                        </div>
+                                                                                    )}
+                                                                                </div>
+                                                                            )}
                                                                         </div>
                                                                     ) : (
                                                                         <div className="space-y-1.5">
                                                                             <div className="font-medium text-gray-900">
-                                                                                #{item.product_id} • {item.product?.product_code || '-'} • {item.product?.product_type || 'Unknown'}
+                                                                                <span
+                                                                                    className="cursor-pointer text-blue-600 hover:underline"
+                                                                                    onClick={() => toggleProductTx(item.product_id)}
+                                                                                >
+                                                                                    #{item.product_id}
+                                                                                </span> • {item.product?.product_code || '-'} • {item.product?.product_type || 'Unknown'}
                                                                             </div>
                                                                             <div className="flex items-center gap-2">
                                                                                 <span className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-medium ${getStatusColor(item.product?.status || '')}`}>
@@ -425,6 +521,29 @@ export const Orders = () => {
                                                                                 </span>
                                                                                 <span className="text-gray-600 font-medium">Giá chốt: {formatCurrency(item.price_at_time)}</span>
                                                                             </div>
+
+                                                                            {expandedProducts[item.product_id] !== undefined && (
+                                                                                <div className="ml-4 mt-1 mb-2 max-w-[250px] bg-white border border-gray-200 shadow-sm rounded p-2 z-10 relative">
+                                                                                    <div className="font-semibold text-[10px] text-gray-500 mb-1 uppercase tracking-wider">Lịch sử SP #{item.product_id}</div>
+                                                                                    {expandedProducts[item.product_id] === null ? (
+                                                                                        <div className="text-[10px] text-gray-400">Đang tải...</div>
+                                                                                    ) : expandedProducts[item.product_id]?.length === 0 ? (
+                                                                                        <div className="text-[10px] text-gray-400">Không có giao dịch.</div>
+                                                                                    ) : (
+                                                                                        <div className="space-y-1">
+                                                                                            {expandedProducts[item.product_id]?.map(tx => (
+                                                                                                <div key={tx.transaction_id} className="flex justify-between items-center bg-gray-50 p-1.5 rounded border border-gray-100">
+                                                                                                    <div className="flex flex-col">
+                                                                                                        <span className="font-bold text-[11px] text-indigo-600">{tx.code}</span>
+                                                                                                        <span className="text-[9px] text-gray-500">{formatDate(tx.created_at)}</span>
+                                                                                                    </div>
+                                                                                                    <span className="text-[9px] px-1 py-0.5 bg-blue-100 text-blue-700 rounded">{tx.type}</span>
+                                                                                                </div>
+                                                                                            ))}
+                                                                                        </div>
+                                                                                    )}
+                                                                                </div>
+                                                                            )}
                                                                         </div>
                                                                     )}
                                                                 </div>
