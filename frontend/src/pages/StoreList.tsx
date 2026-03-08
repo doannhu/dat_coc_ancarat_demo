@@ -62,7 +62,10 @@ export function StoreList() {
                 storesList.map(async (store: Store) => {
                     try {
                         const productsRes = await axios.get(`/api/v1/products/store/${store.id}`);
-                        return { ...store, products: productsRes.data };
+                        // User wants 'Tổng số sản phẩm có sẵn' and money to only include products that are 'Có sẵn' and is_ordered = true.
+                        // Since this endpoint only returns 'Có sẵn' products, we just filter by is_ordered here.
+                        const filteredProducts = productsRes.data.filter((product: Product) => product.is_ordered === true);
+                        return { ...store, products: filteredProducts };
                     } catch {
                         return { ...store, products: [] };
                     }
@@ -225,7 +228,6 @@ export function StoreList() {
                                                 </thead>
                                                 {(() => {
                                                     const groupedByTx = store.products
-                                                        .filter(product => !(product.status === 'Có sẵn' && !product.is_ordered))
                                                         .reduce((acc, product) => {
                                                             const txCode = product.transaction_code || 'Khác';
                                                             if (!acc[txCode]) acc[txCode] = [];

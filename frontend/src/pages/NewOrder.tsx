@@ -11,7 +11,7 @@ import { nowHanoiLocal, hanoiToISO } from '../lib/dateUtils';
 interface Store { id: number; name: string; }
 interface Customer { id: number; name: string; phone_number: string; cccd: string; }
 interface OrderItem { product_type: string; quantity: number; price: number; is_new: boolean; product_id?: number; }
-interface AvailableProduct { id: number; product_type: string; last_price: number; store_id: number; store_name: string; }
+interface AvailableProduct { id: number; product_type: string; last_price: number; store_id: number; store_name: string; is_ordered?: boolean; }
 
 const toTitleCase = (str: string) => {
     if (!str) return '';
@@ -67,7 +67,9 @@ export function NewOrder() {
     const fetchAvailableProducts = async () => {
         try {
             const res = await axios.get('/api/v1/products/available?limit=1000');
-            setAvailableProducts(res.data);
+            // User requested to only show products that have status 'Có sẵn' (handled by backend API) and is_ordered is true
+            const filteredProducts = res.data.filter((p: AvailableProduct) => p.is_ordered === true);
+            setAvailableProducts(filteredProducts);
         } catch (e) {
             console.error("Failed to fetch available products", e);
         }
