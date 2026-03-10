@@ -13,7 +13,7 @@ class TransactionService:
         self.product_service = product_service
         self.product_repository = product_service.repository
 
-    async def get_transactions(self, skip: int = 0, limit: int = 100, start_date: Optional[date] = None, end_date: Optional[date] = None, tx_type: Optional[str] = None) -> List[Transaction]:
+    async def get_transactions(self, skip: int = 0, limit: int = 100, start_date: Optional[date] = None, end_date: Optional[date] = None, tx_type: Optional[str] = None, customer_search: Optional[str] = None) -> List[Transaction]:
         if tx_type:
             normalized = tx_type.replace("+", " ").strip()
             if normalized in (TransactionType.SALE.value, "sale", "SALE"):
@@ -22,7 +22,7 @@ class TransactionService:
                 tx_type = normalized
             else:
                 tx_type = normalized
-        transactions = await self.repository.get_multi(skip=skip, limit=limit, start_date=start_date, end_date=end_date, tx_type=tx_type)
+        transactions = await self.repository.get_multi(skip=skip, limit=limit, start_date=start_date, end_date=end_date, tx_type=tx_type, customer_search=customer_search)
         
         # Get linked statuses for sale transactions
         sale_ids = [t.id for t in transactions if t.type == TransactionType.SALE]

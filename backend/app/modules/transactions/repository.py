@@ -24,8 +24,7 @@ class TransactionRepository:
         result = await self.db.execute(query)
         return result.scalar_one_or_none()
 
-    async def get_multi(self, skip: int = 0, limit: int = 100, start_date: Optional[date] = None, end_date: Optional[date] = None, tx_type: Optional[str] = None):
-        # Eager load items and relationships
+    async def get_multi(self, skip: int = 0, limit: int = 100, start_date: Optional[date] = None, end_date: Optional[date] = None, tx_type: Optional[str] = None, customer_search: Optional[str] = None):
         query = select(Transaction).options(
             selectinload(Transaction.items).options(
                 selectinload(TransactionItem.product).selectinload(Product.store),
@@ -38,15 +37,21 @@ class TransactionRepository:
         
         if tx_type:
             query = query.where(Transaction.type == tx_type)
+
+        if customer_search:
+            term = f"%{customer_search}%"
+            query = query.join(Customer, Customer.id == Transaction.customer_id).where(
+                (Customer.name.ilike(term)) |
+                (Customer.phone_number.ilike(term)) |
+                (Customer.cccd.ilike(term))
+            )
         
         if start_date:
-            # Cast to Date for accurate comparison ignoring time
             query = query.where(func.date(Transaction.created_at) >= start_date)
             
         if end_date:
             query = query.where(func.date(Transaction.created_at) <= end_date)
             
-        # Order by newest first
         query = query.order_by(Transaction.created_at.desc())
 
         result = await self.db.execute(query.offset(skip).limit(limit))

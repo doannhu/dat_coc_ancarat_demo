@@ -40,9 +40,10 @@ async def read_transactions(
     start_date: Optional[date] = None,
     end_date: Optional[date] = None,
     tx_type: Optional[str] = None,
+    customer_search: Optional[str] = None,
     service: TransactionService = Depends(get_service)
 ):
-    return await service.get_transactions(skip=skip, limit=limit, start_date=start_date, end_date=end_date, tx_type=tx_type)
+    return await service.get_transactions(skip=skip, limit=limit, start_date=start_date, end_date=end_date, tx_type=tx_type, customer_search=customer_search)
 
 @router.get("/customer/{customer_id}", response_model=List[transaction_schema.Transaction])
 async def get_customer_transactions(

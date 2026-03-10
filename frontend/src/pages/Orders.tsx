@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card'
 import { Input } from '../components/ui/Input';
 import { Button } from '../components/ui/Button';
 import { ContractGenerator } from '../components/ContractGenerator';
-import { ArrowLeft, ChevronDown, ChevronRight } from 'lucide-react';
+import { ArrowLeft, ChevronDown, ChevronRight, Search, X } from 'lucide-react';
 import styles from './Orders.module.css';
 import { formatTime, formatDate, todayHanoi, startOfMonthHanoi } from '../lib/dateUtils';
 
@@ -101,6 +101,8 @@ export const Orders = () => {
     const [startDate, setStartDate] = useState<string>(startOfMonthHanoi());
     const [endDate, setEndDate] = useState<string>(todayHanoi());
     const [loading, setLoading] = useState(false);
+    const [customerSearch, setCustomerSearch] = useState('');
+    const [activeSearch, setActiveSearch] = useState('');
     const [expandedOrders, setExpandedOrders] = useState<Set<number>>(new Set());
     const [expandedProducts, setExpandedProducts] = useState<Record<number, ProductTransaction[] | null>>({});
 
@@ -145,16 +147,23 @@ export const Orders = () => {
     };
 
     useEffect(() => {
-        fetchOrders();
+        if (!activeSearch) fetchOrders();
     }, [startDate, endDate]);
 
-    const fetchOrders = async () => {
+    const fetchOrders = async (searchTerm?: string) => {
         setLoading(true);
         try {
+            const search = searchTerm ?? activeSearch;
+            const params: Record<string, string> = { tx_type: 'Đơn cọc' };
+            if (search) {
+                params.customer_search = search;
+            } else {
+                params.start_date = startDate;
+                params.end_date = endDate;
+            }
+
             const [ordersRes, statsRes] = await Promise.all([
-                axios.get('/api/v1/transactions/', {
-                    params: { start_date: startDate, end_date: endDate, tx_type: 'Đơn cọc' }
-                }),
+                axios.get('/api/v1/transactions/', { params }),
                 axios.get('/api/v1/transactions/stats', {
                     params: { start_date: startDate, end_date: endDate }
                 })
@@ -167,6 +176,19 @@ export const Orders = () => {
         } finally {
             setLoading(false);
         }
+    };
+
+    const handleCustomerSearch = () => {
+        const term = customerSearch.trim();
+        if (!term) return;
+        setActiveSearch(term);
+        fetchOrders(term);
+    };
+
+    const clearSearch = () => {
+        setCustomerSearch('');
+        setActiveSearch('');
+        fetchOrders('');
     };
 
     const calculateTotal = (items: TransactionItem[]) => {
@@ -297,6 +319,7 @@ export const Orders = () => {
                         type="date"
                         value={startDate}
                         onChange={(e) => setStartDate(e.target.value)}
+                        disabled={!!activeSearch}
                     />
                 </div>
                 <div>
@@ -305,10 +328,42 @@ export const Orders = () => {
                         type="date"
                         value={endDate}
                         onChange={(e) => setEndDate(e.target.value)}
+                        disabled={!!activeSearch}
                     />
                 </div>
-                <Button onClick={fetchOrders} className="">Tải lại</Button>
+                <Button onClick={() => fetchOrders()} disabled={!!activeSearch}>Tải lại</Button>
+
+                <div className="ml-auto flex items-end gap-2">
+                    <div>
+                        <label className={styles.label}>Tìm khách hàng</label>
+                        <Input
+                            type="text"
+                            placeholder="Tên / SĐT / CCCD"
+                            value={customerSearch}
+                            onChange={(e) => setCustomerSearch(e.target.value)}
+                            onKeyDown={(e) => e.key === 'Enter' && handleCustomerSearch()}
+                            className="min-w-[200px]"
+                        />
+                    </div>
+                    <Button onClick={handleCustomerSearch} disabled={!customerSearch.trim()}>
+                        <Search className="h-4 w-4 mr-1" />
+                        Tìm
+                    </Button>
+                    {activeSearch && (
+                        <Button variant="outline" onClick={clearSearch}>
+                            <X className="h-4 w-4 mr-1" />
+                            Xóa
+                        </Button>
+                    )}
+                </div>
             </div>
+
+            {activeSearch && (
+                <div className="mb-4 flex items-center gap-2 text-sm bg-blue-50 text-blue-700 px-4 py-2 rounded-lg border border-blue-200">
+                    <Search className="h-4 w-4" />
+                    <span>Kết quả tìm kiếm cho: <strong>"{activeSearch}"</strong> — {orders.length} đơn cọc</span>
+                </div>
+            )}
 
             <Card className="mb-6">
                 <CardHeader className="pb-2">
