@@ -130,11 +130,11 @@ function ProductPicker({
 
     // Show selected products at the top
     const selectedListUI = selectedProducts.map(p => (
-        <div key={p.id} className={`border-2 rounded-lg p-3 relative ${p.status === 'Đã bán' ? 'border-red-200 bg-red-50' : 'border-green-200 bg-green-50'}`}>
+        <div key={p.id} className={`border-2 rounded-lg p-3 relative ${p.status === 'Đã bán' ? 'border-red-200 bg-red-50' : p.status === 'Đã đặt hàng' ? 'border-purple-200 bg-purple-50' : 'border-green-200 bg-green-50'}`}>
             <button onClick={() => onRemove(p.id)} className="absolute top-2 right-2 text-gray-400 hover:text-red-500 bg-white rounded-full shadow-sm"><X className="h-4 w-4" /></button>
             <div className="flex items-center gap-2 mb-1">
                 <span className="font-bold">#{p.id}</span>
-                <span className={`px-2 py-0.5 rounded text-xs font-medium ${p.status === 'Đã bán' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>{p.status}</span>
+                <span className={`px-2 py-0.5 rounded text-xs font-medium ${p.status === 'Đã bán' ? 'bg-red-100 text-red-700' : p.status === 'Đã đặt hàng' ? 'bg-purple-100 text-purple-700' : 'bg-green-100 text-green-700'}`}>{p.status}</span>
             </div>
             <div className="text-sm space-y-1">
                 <div className="flex justify-between"><span className="text-gray-500">Loại:</span><span className="font-medium">{p.product_type}</span></div>
@@ -238,7 +238,7 @@ function ProductPicker({
                                 ) : (
                                     <div className="max-h-48 overflow-y-auto space-y-1">
                                         {customerTxs.map(tx => {
-                                            const soldItems = tx.items.filter(i => i.product.status === 'Đã bán');
+                                            const soldItems = tx.items.filter(i => i.product.status === 'Đã bán' || i.product.status === 'Đã đặt hàng');
                                             if (soldItems.length === 0) return null;
                                             const isOpen = selectedTx?.id === tx.id;
                                             const selectedIds = selectedProducts.map(sp => sp.id);
@@ -451,7 +451,9 @@ export function SwapProducts() {
     const isValidSwap = products1.length > 0 && products2.length > 0 && !products1.some(p => products2.map(x => x.id).includes(p.id)) && (
         (products1.every(p => p.status === 'Đã bán') && products2.every(p => p.status === 'Có sẵn')) ||
         (products2.every(p => p.status === 'Đã bán') && products1.every(p => p.status === 'Có sẵn')) ||
-        (products1.every(p => p.status === 'Đã bán') && products2.every(p => p.status === 'Đã bán'))
+        (products1.every(p => p.status === 'Đã bán') && products2.every(p => p.status === 'Đã bán')) ||
+        (products1.every(p => p.status === 'Đã đặt hàng') && products2.every(p => p.status === 'Có sẵn')) ||
+        (products2.every(p => p.status === 'Đã đặt hàng') && products1.every(p => p.status === 'Có sẵn'))
     );
 
     return (
@@ -462,6 +464,35 @@ export function SwapProducts() {
                         <ArrowLeft className="h-5 w-5" />
                     </Button>
                     <h1 className="text-3xl font-bold text-gray-900">Hoán đổi sản phẩm</h1>
+                </div>
+
+                <div className="bg-white border border-gray-200 rounded-lg overflow-hidden text-sm">
+                    <table className="w-full">
+                        <thead>
+                            <tr className="bg-gray-50 text-gray-600">
+                                <th className="px-4 py-2 text-left font-medium">Nhóm 1</th>
+                                <th className="px-4 py-2 text-left font-medium">Nhóm 2</th>
+                                <th className="px-4 py-2 text-left font-medium">Tình huống</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100">
+                            <tr>
+                                <td className="px-4 py-2"><span className="bg-red-100 text-red-700 px-2 py-0.5 rounded text-xs font-medium">Đã bán</span></td>
+                                <td className="px-4 py-2"><span className="bg-green-100 text-green-700 px-2 py-0.5 rounded text-xs font-medium">Có sẵn</span></td>
+                                <td className="px-4 py-2 text-gray-600">SP khách hàng ↔ kho hàng</td>
+                            </tr>
+                            <tr>
+                                <td className="px-4 py-2"><span className="bg-purple-100 text-purple-700 px-2 py-0.5 rounded text-xs font-medium">Đã đặt hàng</span></td>
+                                <td className="px-4 py-2"><span className="bg-green-100 text-green-700 px-2 py-0.5 rounded text-xs font-medium">Có sẵn</span></td>
+                                <td className="px-4 py-2 text-gray-600">SP đã đặt NSX ↔ kho hàng</td>
+                            </tr>
+                            <tr>
+                                <td className="px-4 py-2"><span className="bg-red-100 text-red-700 px-2 py-0.5 rounded text-xs font-medium">Đã bán</span></td>
+                                <td className="px-4 py-2"><span className="bg-red-100 text-red-700 px-2 py-0.5 rounded text-xs font-medium">Đã bán</span></td>
+                                <td className="px-4 py-2 text-gray-600">Khách A ↔ Khách B</td>
+                            </tr>
+                        </tbody>
+                    </table>
                 </div>
 
                 {/* Transaction Details */}
@@ -591,7 +622,7 @@ export function SwapProducts() {
                                 <div className="flex items-center gap-2 text-yellow-600 bg-yellow-50 p-3 rounded-md text-sm mb-4">
                                     <AlertTriangle className="h-4 w-4 flex-shrink-0" />
                                     <span>
-                                        Hoán đổi chỉ hỗ trợ: cùng trạng thái trong mỗi nhóm, và kết hợp "Đã bán" ↔ "Có sẵn" hoặc "Đã bán" ↔ "Đã bán". Không được trùng sản phẩm.
+                                        Hoán đổi chỉ hỗ trợ: cùng trạng thái trong mỗi nhóm, và kết hợp "Đã bán" ↔ "Có sẵn", "Đã đặt hàng" ↔ "Có sẵn", hoặc "Đã bán" ↔ "Đã bán". Không được trùng sản phẩm.
                                     </span>
                                 </div>
                             )}
