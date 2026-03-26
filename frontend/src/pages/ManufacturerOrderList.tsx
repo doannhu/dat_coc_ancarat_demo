@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card'
 import { Input } from '../components/ui/Input';
 import { Button } from '../components/ui/Button';
 import { ArrowLeft, ChevronDown, ChevronRight } from 'lucide-react';
-import { formatDate, formatTime, todayHanoi } from '../lib/dateUtils';
+import { formatDate, formatTime, formatDateOnly, todayHanoi } from '../lib/dateUtils';
 
 // Types
 interface Product {
@@ -45,6 +45,7 @@ interface Transaction {
     created_at: string;
     code?: string;  // Manufacturer order code
     transaction_code?: string;
+    due_date?: string;  // Ngày hẹn trả
     items: TransactionItem[];
     store?: Store;
     staff?: Staff;
@@ -314,6 +315,11 @@ export function ManufacturerOrderList() {
                                                             {formatDate(order.created_at)}{' '}
                                                             {formatTime(order.created_at)}
                                                         </div>
+                                                        {order.due_date && (
+                                                            <div className="text-sm text-orange-600">
+                                                                Hẹn trả: {formatDateOnly(order.due_date)}
+                                                            </div>
+                                                        )}
                                                     </div>
                                                 </div>
                                                 <div className="text-right">

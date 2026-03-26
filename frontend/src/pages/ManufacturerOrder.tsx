@@ -55,6 +55,7 @@ export function ManufacturerOrder() {
     const [stores, setStores] = useState<Store[]>([]);
     const [selectedStore, setSelectedStore] = useState<number>(0);
     const [selectedDate, setSelectedDate] = useState<string>(nowHanoiLocal());
+    const [dueDate, setDueDate] = useState<string>('');
     const [orderCode, setOrderCode] = useState('');
 
     // Items
@@ -189,7 +190,8 @@ export function ManufacturerOrder() {
                 store_id: selectedStore,
                 items: orderItems,
                 created_at: hanoiToISO(selectedDate),
-                code: orderCode
+                code: orderCode,
+                due_date: dueDate || null
             };
             console.log("Submitting:", payload);
             await axios.post('/api/v1/transactions/manufacturer-order', payload);
@@ -243,6 +245,14 @@ export function ManufacturerOrder() {
                                     type="datetime-local"
                                     value={selectedDate}
                                     onChange={(e) => setSelectedDate(e.target.value)}
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium mb-1">Ngày hẹn trả</label>
+                                <Input
+                                    type="date"
+                                    value={dueDate}
+                                    onChange={(e) => setDueDate(e.target.value)}
                                 />
                             </div>
                         </CardContent>

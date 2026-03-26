@@ -1,6 +1,6 @@
 from enum import Enum
 from datetime import datetime
-from sqlalchemy import Column, Integer, String, Float, ForeignKey, DateTime, Boolean
+from sqlalchemy import Column, Integer, String, Float, ForeignKey, DateTime, Date, Boolean
 from sqlalchemy.orm import relationship
 from app.db.base import Base
 
@@ -105,6 +105,7 @@ class Transaction(Base):
     bank_transfer_amount = Column(Float, default=0.0)
     code = Column(String, nullable=True) # Manufacturer manual code
     transaction_code = Column(String, nullable=True, unique=True) # Auto-generated system code
+    due_date = Column(Date, nullable=True)  # Ngày hẹn trả
     
     product_items = relationship(
         "Product",

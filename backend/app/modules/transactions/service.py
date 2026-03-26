@@ -168,6 +168,7 @@ class TransactionService:
             store_id=order_in.store_id,
             created_at=tx_created,
             code=order_in.code,
+            due_date=order_in.due_date,
             transaction_code=await self._generate_transaction_code(tx_created),
             # No customer for manufacturer order
         )

@@ -31,6 +31,15 @@ export function formatDate(dateStr: string): string {
     });
 }
 
+/** Format a date-only string (YYYY-MM-DD) as "dd/mm/yyyy". 
+ *  Unlike formatDate, this handles pure date strings without timezone gymnastics. */
+export function formatDateOnly(dateStr: string): string {
+    if (!dateStr) return '';
+    const [y, m, d] = dateStr.split('-');
+    if (!y || !m || !d) return dateStr;
+    return `${d}/${m}/${y}`;
+}
+
 /** Format a date string from API as time only: "15:00:00" */
 export function formatTime(dateStr: string): string {
     return parseHanoi(dateStr).toLocaleTimeString(HANOI_LOCALE, {

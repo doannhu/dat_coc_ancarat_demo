@@ -15,6 +15,7 @@ interface Transaction {
     transaction_code: string;
     code: string; // manual code
     created_at: string;
+    due_date?: string; // Ngày hẹn trả
     store_id: number;
     store: Store;
     items: any[];
@@ -32,6 +33,7 @@ export function EditManufacturerOrder() {
     const [selectedStore, setSelectedStore] = useState<number>(0);
     const [orderCode, setOrderCode] = useState('');
     const [selectedDate, setSelectedDate] = useState<string>('');
+    const [dueDate, setDueDate] = useState<string>('');
 
     useEffect(() => {
         const fetchData = async () => {
@@ -55,6 +57,7 @@ export function EditManufacturerOrder() {
                     const localISOTime = (new Date(dateObj.getTime() - tzOffset)).toISOString().slice(0, 16);
                     setSelectedDate(localISOTime);
                 }
+                setDueDate(orderData.due_date || '');
 
             } catch (error) {
                 console.error("Failed to load order", error);
@@ -78,6 +81,7 @@ export function EditManufacturerOrder() {
                 store_id: selectedStore,
                 code: orderCode, // Manual code
                 created_at: new Date(selectedDate).toISOString(),
+                due_date: dueDate || null,
             };
 
             await axios.put(`/api/v1/transactions/manufacturer-order/${id}`, payload);
@@ -133,6 +137,14 @@ export function EditManufacturerOrder() {
                                     type="datetime-local"
                                     value={selectedDate}
                                     onChange={e => setSelectedDate(e.target.value)}
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium mb-1">Ngày hẹn trả</label>
+                                <Input
+                                    type="date"
+                                    value={dueDate}
+                                    onChange={e => setDueDate(e.target.value)}
                                 />
                             </div>
                             <Button className="w-full mt-4" onClick={handleUpdate}>
