@@ -3,7 +3,7 @@ from typing import Optional, List, Dict
 from sqlalchemy import select, extract, cast, Date, func
 from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.db.models import Transaction, TransactionItem, Product, Customer, Store, Staff, TransactionType
+from app.db.models import Transaction, TransactionItem, Product, Customer, Store, Staff, TransactionType, ProductStatus
 from . import schemas as transaction_schema
 
 class TransactionRepository:
@@ -154,8 +154,10 @@ class TransactionRepository:
         subq = subq.subquery()
         query = (
             select(subq.c.product_id, Customer.name)
+            .join(Product, Product.id == subq.c.product_id)
             .outerjoin(Customer, Customer.id == subq.c.customer_id)
             .where(subq.c.rn == 1)
+            .where(Product.status != ProductStatus.AVAILABLE)
         )
         result = await self.db.execute(query)
         return {row.product_id: (row.name or "") for row in result.all()}

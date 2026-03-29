@@ -132,9 +132,16 @@ export function Dashboard() {
     return (
         <div className="min-h-screen bg-gray-50 p-6">
             <header className="mb-8 flex items-center justify-between">
-                <div>
-                    <h1 className="text-2xl font-bold text-gray-900">Bảng chức năng</h1>
-                    <p className="text-gray-500">Xin chào, {user?.name}</p>
+                <div className="flex items-center gap-4">
+                    <img
+                        src="/logo.svg"
+                        alt="Logo"
+                        className="w-12 h-12 rounded-full border border-gray-200 shadow-sm"
+                    />
+                    <div>
+                        <h1 className="text-2xl font-bold text-gray-900">Bảng chức năng</h1>
+                        <p className="text-gray-500">Xin chào, {user?.name}</p>
+                    </div>
                 </div>
                 <button
                     onClick={handleLogout}

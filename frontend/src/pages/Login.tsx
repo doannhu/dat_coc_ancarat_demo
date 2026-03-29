@@ -22,7 +22,7 @@ export function Login() {
             login('nhanvien', 'staff', 'Nhân Viên');
             navigate('/dashboard');
         } else {
-            setError('Invalid username or password');
+            setError('Tên đăng nhập hoặc mật khẩu không đúng');
         }
     };
 
@@ -30,15 +30,20 @@ export function Login() {
         <div className="flex min-h-screen items-center justify-center bg-gray-50 p-4">
             <Card className="w-full max-w-md">
                 <CardHeader className="text-center">
+                    <img
+                        src="/logo.svg"
+                        alt="Logo"
+                        className="w-20 h-20 mx-auto mb-4 rounded-full border-2 border-gray-100 shadow-sm"
+                    />
                     <CardTitle className="text-3xl font-bold text-gray-900">Bạc Hoa Tùng</CardTitle>
-                    <p className="text-gray-500 mt-2">Sign in to manage operations</p>
+                    <p className="text-gray-500 mt-2">Đăng nhập để quản lý hệ thống</p>
                 </CardHeader>
                 <CardContent>
                     <form onSubmit={handleLogin} className="space-y-4">
                         <div className="space-y-2">
                             <Input
                                 type="text"
-                                placeholder="Username"
+                                placeholder="Tên đăng nhập"
                                 value={username}
                                 onChange={(e) => setUsername(e.target.value)}
                                 required
@@ -47,7 +52,7 @@ export function Login() {
                         <div className="space-y-2">
                             <Input
                                 type="password"
-                                placeholder="Password"
+                                placeholder="Mật khẩu"
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
                                 required
@@ -55,7 +60,7 @@ export function Login() {
                         </div>
                         {error && <p className="text-sm text-red-500 text-center">{error}</p>}
                         <Button type="submit" className="w-full" size="lg">
-                            Sign In
+                            Đăng nhập
                         </Button>
                     </form>
                 </CardContent>
