@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
+import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '../components/ui/Card';
 import { Input } from '../components/ui/Input';
 import { Button } from '../components/ui/Button';
 
@@ -64,6 +64,9 @@ export function Login() {
                         </Button>
                     </form>
                 </CardContent>
+                <CardFooter className="justify-center">
+                    <p className="text-gray-500 text-sm">© Phần mềm được viết bởi Bạc Hoa Tùng</p>
+                </CardFooter>
             </Card>
         </div>
     );
