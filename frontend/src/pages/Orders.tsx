@@ -107,6 +107,7 @@ export const Orders = () => {
     const [activeSearch, setActiveSearch] = useState('');
     const [expandedOrders, setExpandedOrders] = useState<Set<number>>(new Set());
     const [expandedProducts, setExpandedProducts] = useState<Record<number, ProductTransaction[] | null>>({});
+    const [selectedStore, setSelectedStore] = useState<string>('');
 
     const toggleOrder = (orderId: number) => {
         setExpandedOrders(prev => {
@@ -200,6 +201,14 @@ export const Orders = () => {
     const formatCurrency = (amount: number) => {
         return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
     };
+
+    const storeOptions = Array.from(
+        new Set(orders.map(o => o.store?.name).filter(Boolean))
+    ) as string[];
+
+    const filteredOrders = selectedStore
+        ? orders.filter(o => o.store?.name === selectedStore)
+        : orders;
 
     const productSummaryByDate = orders.reduce((acc, order) => {
         const dateStr = formatDate(order.created_at);
@@ -335,6 +344,20 @@ export const Orders = () => {
                 </div>
                 <Button onClick={() => fetchOrders()} disabled={!!activeSearch}>Tải lại</Button>
 
+                <div>
+                    <label className={styles.label}>Cửa hàng</label>
+                    <select
+                        value={selectedStore}
+                        onChange={(e) => setSelectedStore(e.target.value)}
+                        className="border border-gray-300 rounded-md px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                        <option value="">Tất cả</option>
+                        {storeOptions.map(name => (
+                            <option key={name} value={name}>{name}</option>
+                        ))}
+                    </select>
+                </div>
+
                 <div className="ml-auto flex items-end gap-2">
                     <div>
                         <label className={styles.label}>Tìm khách hàng</label>
@@ -434,7 +457,7 @@ export const Orders = () => {
                                         <td colSpan={10} className={styles.loading}>Không có đơn hàng trong khoảng ngày này.</td>
                                     </tr>
                                 ) : (
-                                    orders.map((order) => (
+                                    filteredOrders.map((order) => (
                                         <tr key={order.id} className={styles.tr}>
                                             <td className={styles.td}>{order.transaction_code || `#${order.id}`}</td>
                                             <td className={styles.td}>
