@@ -1,0 +1,453 @@
+import { useRef, useState } from 'react';
+// @ts-ignore
+import html2pdf from 'html2pdf.js';
+import { Button } from './ui/Button';
+import { FileText, Download, X } from 'lucide-react';
+import watermarkImg from '../assets/hoa_tung_watermark.png';
+
+interface Product {
+    product_type: string;
+    status: string;
+    last_price: number;
+    store_id: number;
+}
+
+interface TransactionItem {
+    id: number;
+    transaction_id: number;
+    product_id: number;
+    price_at_time: number;
+    product: Product;
+    swapped: boolean;
+    original_product_id: number | null;
+    original_product: Product | null;
+}
+
+interface Customer {
+    id: number;
+    name: string;
+    phone_number: string;
+    cccd?: string;
+    address?: string;
+}
+
+interface Store {
+    id: number;
+    name: string;
+}
+
+interface Staff {
+    id: number;
+    staff_name: string;
+    role: string;
+}
+
+interface Transaction {
+    id: number;
+    type: string;
+    created_at: string;
+    transaction_code?: string;
+    payment_method: string;
+    cash_amount?: number;
+    bank_transfer_amount?: number;
+    items: TransactionItem[];
+    customer?: Customer;
+    store?: Store;
+    staff?: Staff;
+    order_status?: string;
+}
+
+interface ReturnReceiptGeneratorProps {
+    order: Transaction;
+    disabled?: boolean;
+    fulfillmentDate?: string;
+}
+
+function numberToVietnameseWords(n: number): string {
+    if (n === 0) return 'Không đồng';
+
+    const ones = ['', 'một', 'hai', 'ba', 'bốn', 'năm', 'sáu', 'bảy', 'tám', 'chín'];
+    const units = ['', 'nghìn', 'triệu', 'tỷ'];
+
+    function readGroup(num: number): string {
+        const h = Math.floor(num / 100);
+        const t = Math.floor((num % 100) / 10);
+        const o = num % 10;
+        let result = '';
+
+        if (h > 0) {
+            result += ones[h] + ' trăm ';
+            if (t === 0 && o > 0) result += 'lẻ ';
+        }
+
+        if (t > 1) {
+            result += ones[t] + ' mươi ';
+            if (o === 1) result += 'mốt ';
+            else if (o === 5) result += 'lăm ';
+            else if (o > 0) result += ones[o] + ' ';
+        } else if (t === 1) {
+            result += 'mười ';
+            if (o === 5) result += 'lăm ';
+            else if (o > 0) result += ones[o] + ' ';
+        } else if (o > 0) {
+            result += ones[o] + ' ';
+        }
+
+        return result.trim();
+    }
+
+    const groups: number[] = [];
+    let temp = Math.floor(n);
+    while (temp > 0) {
+        groups.push(temp % 1000);
+        temp = Math.floor(temp / 1000);
+    }
+
+    let result = '';
+    for (let i = groups.length - 1; i >= 0; i--) {
+        if (groups[i] > 0) {
+            result += readGroup(groups[i]) + ' ' + units[i] + ' ';
+        }
+    }
+
+    result = result.trim();
+    result = result.charAt(0).toUpperCase() + result.slice(1) + ' đồng';
+    return result;
+}
+
+function formatVND(amount: number): string {
+    return new Intl.NumberFormat('vi-VN').format(amount);
+}
+
+function formatDate(dateStr: string): { day: string; month: string; year: string; time: string } {
+    const d = new Date(dateStr);
+    return {
+        day: String(d.getDate()).padStart(2, '0'),
+        month: String(d.getMonth() + 1).padStart(2, '0'),
+        year: String(d.getFullYear()),
+        time: `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+    };
+}
+
+function getProductLabel(productType: string): { name: string; purity: string } {
+    if (productType.includes('5 lượng') || productType.includes('5L')) {
+        return { name: 'Bạc Ancarat Ngân Long Quảng Tiến 999 5L', purity: '999' };
+    } else if (productType.includes('1 lượng') || productType.includes('1L')) {
+        return { name: 'Bạc Ancarat Ngân Long Quảng Tiến 999 1L', purity: '999' };
+    } else if (productType.includes('1 kg') || productType.includes('1KG')) {
+        return { name: 'Bạc Ancarat Ngân Long Quảng Tiến 999 1KG', purity: '999' };
+    }
+    return { name: productType, purity: '999' };
+}
+
+function getWeightPerUnit(productType: string): number {
+    if (productType.includes('5 lượng') || productType.includes('5L')) return 50000;
+    if (productType.includes('1 lượng') || productType.includes('1L')) return 10000;
+    if (productType.includes('1 kg') || productType.includes('1KG')) return 265000;
+    return 0;
+}
+
+interface GroupedItem {
+    productType: string;
+    label: string;
+    purity: string;
+    quantity: number;
+    weightPerUnit: number;
+    totalWeight: number;
+    pricePerUnit: number;
+    totalPrice: number;
+}
+
+function groupItems(items: TransactionItem[]): GroupedItem[] {
+    const groups: Record<string, GroupedItem> = {};
+    for (const item of items) {
+        const type = item.product.product_type;
+        const { name, purity } = getProductLabel(type);
+        const weight = getWeightPerUnit(type);
+        if (!groups[type]) {
+            groups[type] = {
+                productType: type,
+                label: name,
+                purity,
+                quantity: 0,
+                weightPerUnit: weight,
+                totalWeight: 0,
+                pricePerUnit: item.price_at_time,
+                totalPrice: 0
+            };
+        }
+        groups[type].quantity += 1;
+        groups[type].totalWeight += weight;
+        groups[type].totalPrice += item.price_at_time;
+    }
+    return Object.values(groups);
+}
+
+export function ReturnReceiptGenerator({ order, disabled = false, fulfillmentDate }: ReturnReceiptGeneratorProps) {
+    const [showPreview, setShowPreview] = useState(false);
+    const [isGenerating, setIsGenerating] = useState(false);
+    const receiptRef = useRef<HTMLDivElement>(null);
+
+    const date = formatDate(fulfillmentDate || order.created_at);
+    const receiptId = order.transaction_code || `GTH-${date.day}-${date.month}-${date.year}-${String(order.id).padStart(5, '0')}`;
+    const customer = order.customer;
+    const grouped = groupItems(order.items);
+    const totalQty = grouped.reduce((s, g) => s + g.quantity, 0);
+    const totalWeight = grouped.reduce((s, g) => s + g.totalWeight, 0);
+    const totalPrice = grouped.reduce((s, g) => s + g.totalPrice, 0);
+    const totalInWords = numberToVietnameseWords(totalPrice);
+
+    const handleDownloadPdf = async () => {
+        if (!receiptRef.current) return;
+        setIsGenerating(true);
+        try {
+            const opt = {
+                margin: 0,
+                filename: `GiayXacNhanTraHang_${receiptId}.pdf`,
+                image: { type: 'jpeg' as const, quality: 0.98 },
+                html2canvas: { scale: 2, useCORS: true },
+                jsPDF: { unit: 'mm' as const, format: 'a4' as const, orientation: 'portrait' as const }
+            };
+            await html2pdf().set(opt).from(receiptRef.current).save();
+        } catch (e) {
+            console.error('Failed to generate PDF', e);
+            alert('Lỗi khi tạo PDF');
+        } finally {
+            setIsGenerating(false);
+        }
+    };
+
+    return (
+        <>
+            <Button
+                variant="ghost"
+                className={disabled
+                    ? "text-gray-300 p-1 h-auto cursor-not-allowed"
+                    : "text-blue-600 hover:text-blue-800 hover:bg-blue-50 p-1 h-auto"}
+                onClick={() => { if (!disabled) setShowPreview(true); }}
+                title={disabled ? "Chưa giao hàng" : "Giấy xác nhận trả hàng"}
+                disabled={disabled}
+            >
+                <FileText className="h-4 w-4" />
+            </Button>
+
+            {showPreview && (
+                <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/50 overflow-y-auto py-8"
+                    onClick={(e) => {
+                        if (e.target === e.currentTarget) setShowPreview(false);
+                    }}
+                >
+                    <div className="bg-gray-100 rounded-lg shadow-2xl max-w-[900px] w-full mx-4 relative">
+                        <div className="sticky top-0 z-10 bg-white border-b px-6 py-3 flex items-center justify-between rounded-t-lg">
+                            <h2 className="text-lg font-bold text-gray-800">Giấy xác nhận trả hàng</h2>
+                            <div className="flex items-center gap-2">
+                                <Button
+                                    onClick={handleDownloadPdf}
+                                    disabled={isGenerating}
+                                    className="bg-green-600 hover:bg-green-700 text-white text-sm"
+                                >
+                                    <Download className="h-4 w-4 mr-1" />
+                                    {isGenerating ? 'Đang tạo...' : 'Tải PDF'}
+                                </Button>
+                                <Button variant="ghost" onClick={() => setShowPreview(false)}>
+                                    <X className="h-5 w-5" />
+                                </Button>
+                            </div>
+                        </div>
+
+                        <div className="p-4">
+                            <div ref={receiptRef}>
+                                <div style={{
+                                    backgroundColor: 'white',
+                                    maxWidth: '800px',
+                                    margin: '0 auto',
+                                    padding: '40px 50px',
+                                    fontFamily: '"Times New Roman", Times, serif',
+                                    lineHeight: 1.4,
+                                    color: '#000',
+                                    fontSize: '13px',
+                                    textAlign: 'left',
+                                    position: 'relative'
+                                }}>
+                                    {/* Watermark */}
+                                    <div style={{
+                                        position: 'absolute',
+                                        top: 0, left: 0, right: 0, bottom: 0,
+                                        display: 'flex',
+                                        justifyContent: 'center',
+                                        alignItems: 'center',
+                                        zIndex: 0,
+                                        pointerEvents: 'none',
+                                        opacity: 0.15
+                                    }}>
+                                        <img src={watermarkImg} alt="Watermark" style={{ width: '80%', height: 'auto' }} />
+                                    </div>
+
+                                    <div style={{ position: 'relative', zIndex: 1 }}>
+                                        {/* Receipt ID */}
+                                        <div style={{ textAlign: 'right', fontSize: '13px' }}>
+                                            Số: {receiptId}
+                                        </div>
+
+                                        {/* Header */}
+                                        <div style={{ textAlign: 'center', marginBottom: '20px' }}>
+                                            <h2 style={{ margin: '5px 0', fontSize: '17px', textTransform: 'uppercase', fontWeight: 'bold' }}>
+                                                CỘNG HOÀ XÃ HỘI CHỦ NGHĨA VIỆT NAM
+                                            </h2>
+                                            <p style={{ margin: '2px 0', fontWeight: 'bold' }}>Độc lập - Tự do - Hạnh phúc</p>
+                                            <div style={{ width: '150px', borderBottom: '1px solid black', margin: '5px auto' }}></div>
+                                        </div>
+
+                                        {/* Title */}
+                                        <div style={{ textAlign: 'center', marginTop: '30px', marginBottom: '20px' }}>
+                                            <h1 style={{ fontSize: '19px', marginBottom: '5px', fontWeight: 'bold' }}>
+                                                GIẤY XÁC NHẬN TRẢ HÀNG
+                                            </h1>
+                                        </div>
+
+                                        {/* Info */}
+                                        <div style={{ marginBottom: '10px' }}>
+                                            <p><strong>Hôm nay, ngày {date.day}/{date.month}/{date.year} tại địa điểm:</strong></p>
+                                            <p>154 Nguyễn Thuỵ, Phường Nghĩa Lộ, Quảng Ngãi, Việt Nam</p>
+
+                                            <p><strong>Chúng tôi gồm có:</strong></p>
+
+                                            <div style={{ marginBottom: '5px' }}>
+                                                <strong>Bên A (Bên bán): Doanh nghiệp Tư nhân Vàng Bạc Hoa Tùng</strong><br />
+                                                Đại diện: Ông Bùi Tấn Anh Thảo - Chủ doanh nghiệp<br />
+                                                Địa chỉ: Số 209 Nguyễn Thụy, Nghĩa Lộ, Quảng Ngãi<br />
+                                                Ngân hàng: Vietcombank - DNTN Hiệu Vàng Hoa Tùng | Số TK: 1047400973
+                                            </div>
+
+                                            <div style={{ marginTop: '15px', marginBottom: '5px' }}>
+                                                <strong>Bên B (Bên mua):</strong>{' '}
+                                                {customer?.name || '.....................................................................................................'}<br />
+                                                CCCD/Hộ chiếu số: {customer?.cccd || '......................................'}{' '}<br />
+                                                Địa chỉ thường trú:{' '}
+                                                {customer?.address || '...................................................................................................'}<br />
+                                                Điện thoại:{' '}
+                                                {customer?.phone_number || '................................................................................................................'}
+                                            </div>
+                                        </div>
+
+                                        {/* Chi tiết hàng trả */}
+                                        <span style={{ fontWeight: 'bold', textDecoration: 'underline', marginTop: '15px', display: 'block' }}>
+                                            Chi tiết hàng trả:
+                                        </span>
+                                        <table style={{
+                                            width: '100%',
+                                            borderCollapse: 'collapse',
+                                            margin: '15px 0',
+                                            fontSize: '13px'
+                                        }}>
+                                            <thead>
+                                                <tr>
+                                                    <th style={thStyle}>STT</th>
+                                                    <th style={thStyle}>Tên hàng</th>
+                                                    <th style={thStyle}>HL vàng/bạc</th>
+                                                    <th style={thStyle}>SL(cái)</th>
+                                                    <th style={thStyle}>KL/1SP (lượng/kg)</th>
+                                                    <th style={thStyle}>Tổng KL (lượng/kg)</th>
+                                                    <th style={thStyle}>Đơn giá/lượng (VND)</th>
+                                                    <th style={thStyle}>Thành tiền (VND)</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {grouped.map((g, idx) => (
+                                                    <tr key={idx}>
+                                                        <td style={tdStyle}>{idx + 1}</td>
+                                                        <td style={tdStyle}>{g.label}</td>
+                                                        <td style={tdStyle}>{g.purity}</td>
+                                                        <td style={tdStyle}>{g.quantity}</td>
+                                                        <td style={tdStyle}>
+                                                            {(g.productType.includes('1KG') || g.productType.includes('1 kg')) ? '1 KG' :
+                                                                (g.productType.includes('5L') || g.productType.includes('5 lượng')) ? '5 Lượng' :
+                                                                    (g.productType.includes('1L') || g.productType.includes('1 lượng')) ? '1 Lượng' :
+                                                                        formatVND(g.weightPerUnit)}
+                                                        </td>
+                                                        <td style={tdStyle}>
+                                                            {(g.productType.includes('1KG') || g.productType.includes('1 kg')) ? `${g.quantity} KG` :
+                                                                (g.productType.includes('5L') || g.productType.includes('5 lượng')) ? `${g.quantity * 5} Lượng` :
+                                                                    (g.productType.includes('1L') || g.productType.includes('1 lượng')) ? `${g.quantity} Lượng` :
+                                                                        formatVND(g.totalWeight)}
+                                                        </td>
+                                                        <td style={tdStyle}>{formatVND(g.pricePerUnit)}</td>
+                                                        <td style={tdStyle}>{formatVND(g.totalPrice)}</td>
+                                                    </tr>
+                                                ))}
+                                                <tr style={{ fontWeight: 'bold' }}>
+                                                    <td style={tdStyle} colSpan={3}>Tổng cộng:</td>
+                                                    <td style={tdStyle}>{totalQty}</td>
+                                                    <td style={tdStyle}></td>
+                                                    <td style={tdStyle}>
+                                                        {(() => {
+                                                            let totalKg = 0;
+                                                            let totalLuong = 0;
+                                                            let otherWeight = 0;
+
+                                                            grouped.forEach(g => {
+                                                                if (g.productType.includes('1KG') || g.productType.includes('1 kg')) {
+                                                                    totalKg += g.quantity;
+                                                                } else if (g.productType.includes('5L') || g.productType.includes('5 lượng')) {
+                                                                    totalLuong += g.quantity * 5;
+                                                                } else if (g.productType.includes('1L') || g.productType.includes('1 lượng')) {
+                                                                    totalLuong += g.quantity;
+                                                                } else {
+                                                                    otherWeight += g.totalWeight;
+                                                                }
+                                                            });
+
+                                                            const parts = [];
+                                                            if (totalKg > 0) parts.push(`${totalKg} KG`);
+                                                            if (totalLuong > 0) parts.push(`${totalLuong} Lượng`);
+                                                            if (otherWeight > 0) parts.push(formatVND(otherWeight));
+
+                                                            return parts.length > 0 ? parts.join(', ') : formatVND(totalWeight);
+                                                        })()}
+                                                    </td>
+                                                    <td style={tdStyle}></td>
+                                                    <td style={tdStyle}>{formatVND(totalPrice)}</td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+
+                                        <p><strong>Thành tiền (bằng chữ):</strong> {totalInWords}.</p>
+
+                                        {/* Signatures */}
+                                        <div style={{ marginTop: '40px', display: 'flex', justifyContent: 'space-between' }}>
+                                            <div style={{ textAlign: 'center', width: '45%' }}>
+                                                <strong>BÊN B</strong><br />
+                                                <strong></strong><br />
+                                                <strong>{customer?.name}</strong><br />
+                                            </div>
+                                            <div style={{ textAlign: 'center', width: '45%' }}>
+                                                <strong>BÊN A</strong><br />
+                                                <strong></strong><br />
+                                                <strong>Doanh nghiệp Tư nhân</strong><br />
+                                                <strong>Vàng Bạc Hoa Tùng</strong><br />
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+        </>
+    );
+}
+
+const thStyle: React.CSSProperties = {
+    border: '1px solid black',
+    padding: '8px',
+    textAlign: 'center',
+    fontWeight: 'bold',
+    backgroundColor: '#f9f9f9'
+};
+
+const tdStyle: React.CSSProperties = {
+    border: '1px solid black',
+    padding: '8px',
+    textAlign: 'center'
+};

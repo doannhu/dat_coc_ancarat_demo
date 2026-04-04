@@ -27,11 +27,12 @@ class TransactionService:
         # Get linked statuses for sale transactions
         sale_ids = [t.id for t in transactions if t.type == TransactionType.SALE]
         status_map = await self.repository.get_linked_statuses(sale_ids)
-        
-        # Populate order_status for each transaction
+
+        # Populate order_status and fulfillment_date for each transaction
         for t in transactions:
             if t.id in status_map:
-                t.order_status = status_map[t.id]
+                t.order_status = status_map[t.id]["status"]
+                t.fulfillment_date = status_map[t.id]["fulfillment_date"]
 
         # Populate product.customer_name for all items (who will receive this product)
         product_ids = []
@@ -242,11 +243,12 @@ class TransactionService:
         sale_ids = [t.id for t in transactions if t.type == TransactionType.SALE]
         if sale_ids:
             status_map = await self.repository.get_linked_statuses(sale_ids)
-            
-            # Populate order_status for each transaction
+
+            # Populate order_status and fulfillment_date for each transaction
             for t in transactions:
                 if t.id in status_map:
-                    t.order_status = status_map[t.id]
+                    t.order_status = status_map[t.id]["status"]
+                    t.fulfillment_date = status_map[t.id]["fulfillment_date"]
         
         return transactions
 

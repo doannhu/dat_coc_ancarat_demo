@@ -99,6 +99,7 @@ class Transaction(TransactionInDBBase):
     store: Optional[Store] = None
     staff: Optional[Staff] = None
     order_status: Optional[str] = None  # Derived field: 'buyback', 'fulfilled', or None
+    fulfillment_date: Optional[datetime] = None  # Date of fulfillment transaction
     code: Optional[str] = None  # Manufacturer order code (manual)
     transaction_code: Optional[str] = None  # Transaction code (auto-generated)
     due_date: Optional[date] = None  # Ngày hẹn trả

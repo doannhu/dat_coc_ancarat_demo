@@ -95,39 +95,42 @@ class TransactionRepository:
 
     async def get_linked_statuses(self, transaction_ids: list):
         """Get linked transaction types (buyback/fulfillment) for given transaction IDs.
-        Returns a dict: {original_tx_id: status_type}
+        Returns a dict: {original_tx_id: {"status": status_type, "fulfillment_date": datetime|None}}
         """
         if not transaction_ids:
             return {}
-        
+
         # Find transactions that link to any of the given IDs
         query = select(
             Transaction.linked_transaction_id,
-            Transaction.type
+            Transaction.type,
+            Transaction.created_at
         ).where(
             Transaction.linked_transaction_id.in_(transaction_ids),
             Transaction.type.in_([
-                TransactionType.BUYBACK, 
-                TransactionType.FULFILLMENT, 
+                TransactionType.BUYBACK,
+                TransactionType.FULFILLMENT,
                 TransactionType.SELL_BACK_MFR,
                 TransactionType.MANUFACTURER_RECEIVED
             ])
         )
-        
+
         result = await self.db.execute(query)
         rows = result.all()
-        
+
         # Build status map - prioritize buyback over fulfillment if both exist
         status_map = {}
-        for linked_id, tx_type in rows:
+        for linked_id, tx_type, tx_created_at in rows:
             status_val = 'Đã giao' if tx_type == TransactionType.FULFILLMENT else tx_type
-            
+            fulfillment_date = tx_created_at if tx_type == TransactionType.FULFILLMENT else None
+
             if linked_id not in status_map:
-                status_map[linked_id] = status_val
+                status_map[linked_id] = {"status": status_val, "fulfillment_date": fulfillment_date}
             elif tx_type == TransactionType.BUYBACK:
-                # Buyback takes priority
-                status_map[linked_id] = status_val
-        
+                # Buyback takes priority, preserve fulfillment_date if already set
+                existing_ff_date = status_map[linked_id].get("fulfillment_date")
+                status_map[linked_id] = {"status": status_val, "fulfillment_date": existing_ff_date}
+
         return status_map
 
     async def get_product_customer_names(self, product_ids: List[int]) -> Dict[int, str]:

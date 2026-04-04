@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card'
 import { Input } from '../components/ui/Input';
 import { Button } from '../components/ui/Button';
 import { ContractGenerator } from '../components/ContractGenerator';
+import { ReturnReceiptGenerator } from '../components/ReturnReceiptGenerator';
 import { ArrowLeft, ChevronDown, ChevronRight, Search, X } from 'lucide-react';
 import styles from './Orders.module.css';
 import { formatTime, formatDate, todayHanoi, startOfMonthHanoi } from '../lib/dateUtils';
@@ -59,6 +60,7 @@ interface Transaction {
     store?: Store;
     staff?: Staff;
     order_status?: string;  // 'Mua lại', 'Đã giao', 'Bán lại NSX', or null
+    fulfillment_date?: string;
 }
 
 interface StoreStats {
@@ -419,6 +421,7 @@ export const Orders = () => {
                                     <th className={styles.th}>Sản phẩm</th>
                                     <th className={styles.th + " text-right"}>Tổng tiền</th>
                                     <th className={styles.th}>Hợp đồng</th>
+                                    <th className={styles.th}>Trả hàng</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -612,6 +615,13 @@ export const Orders = () => {
                                             </td>
                                             <td className={styles.td + " text-center"}>
                                                 <ContractGenerator order={order} />
+                                            </td>
+                                            <td className={styles.td + " text-center"}>
+                                                <ReturnReceiptGenerator
+                                                    order={order}
+                                                    disabled={order.order_status !== 'Đã giao'}
+                                                    fulfillmentDate={order.fulfillment_date}
+                                                />
                                             </td>
                                         </tr>
                                     ))
