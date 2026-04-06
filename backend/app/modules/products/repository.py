@@ -85,6 +85,65 @@ class ProductRepository:
         await self.db.commit()
         return obj
 
+    async def get_received_unassigned(self):
+        """Get products with status RECEIVED_FROM_MFR that are not assigned to any customer.
+        A product is 'assigned' if it appears in a SALE transaction that has NOT been bought back.
+        """
+        from app.db.models import TransactionItem, TransactionType
+
+        # Sale transaction IDs that were bought back
+        bought_back_ids = select(Transaction.linked_transaction_id).where(
+            Transaction.type == TransactionType.BUYBACK,
+            Transaction.linked_transaction_id.isnot(None)
+        )
+
+        # Product IDs in active (not bought back) sale transactions
+        sold_product_ids = select(TransactionItem.product_id).join(
+            Transaction, TransactionItem.transaction_id == Transaction.id
+        ).where(
+            Transaction.type == TransactionType.SALE,
+            Transaction.id.notin_(bought_back_ids)
+        )
+
+        query = select(Product).options(
+            selectinload(Product.store),
+            selectinload(Product.transactions)
+        ).where(
+            Product.status == ProductStatus.RECEIVED_FROM_MFR,
+            Product.id.notin_(sold_product_ids)
+        ).order_by(Product.store_id, Product.product_type, Product.id)
+
+        result = await self.db.execute(query)
+        return result.scalars().all()
+
+    async def get_manufacturer_codes_for_products(self, product_ids: list) -> dict:
+        """Returns {product_id: manufacturer_code} by traversing:
+        product -> Nhận hàng NSX tx -> linked Đặt hàng NSX tx -> code
+        """
+        from app.db.models import TransactionItem, TransactionType
+
+        received_subq = (
+            select(
+                TransactionItem.product_id,
+                Transaction.linked_transaction_id
+            )
+            .join(Transaction, TransactionItem.transaction_id == Transaction.id)
+            .where(
+                TransactionItem.product_id.in_(product_ids),
+                Transaction.type == TransactionType.MANUFACTURER_RECEIVED
+            )
+            .subquery()
+        )
+
+        mfr_tx = Transaction.__table__.alias('mfr_tx')
+        query = (
+            select(received_subq.c.product_id, mfr_tx.c.code)
+            .join(mfr_tx, mfr_tx.c.id == received_subq.c.linked_transaction_id)
+        )
+
+        result = await self.db.execute(query)
+        return {row.product_id: row.code for row in result.all() if row.code}
+
     async def get_pending_manufacturer_order(self):
         """Get products from customer orders that are not yet ordered from manufacturer.
         These are products with is_ordered=False and status=SOLD (from customer sales).

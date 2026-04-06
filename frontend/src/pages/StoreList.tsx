@@ -37,9 +37,10 @@ export function StoreList() {
     const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
     const [moveError, setMoveError] = useState<string | null>(null);
     const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
+    const [receivedUnassigned, setReceivedUnassigned] = useState<Product[]>([]);
 
-    const toggleGroup = (storeId: number, txCode: string) => {
-        const key = `${storeId}-${txCode}`;
+    const toggleGroup = (storeKey: number | string, txCode: string) => {
+        const key = `${storeKey}-${txCode}`;
         setExpandedGroups(prev => ({
             ...prev,
             [key]: !prev[key]
@@ -53,17 +54,16 @@ export function StoreList() {
     const fetchData = async () => {
         setLoading(true);
         try {
-            // Get all stores
-            const storesRes = await axios.get('/api/v1/stores/');
+            const [storesRes, receivedRes] = await Promise.all([
+                axios.get('/api/v1/stores/'),
+                axios.get('/api/v1/products/received-unassigned')
+            ]);
             const storesList = storesRes.data;
 
-            // Get available products for each store
             const storesWithProducts: StoreWithProducts[] = await Promise.all(
                 storesList.map(async (store: Store) => {
                     try {
                         const productsRes = await axios.get(`/api/v1/products/store/${store.id}`);
-                        // User wants 'Tổng số sản phẩm có sẵn' and money to only include products that are 'Có sẵn' and is_ordered = true.
-                        // Since this endpoint only returns 'Có sẵn' products, we just filter by is_ordered here.
                         const filteredProducts = productsRes.data.filter((product: Product) => product.is_ordered === true);
                         return { ...store, products: filteredProducts };
                     } catch {
@@ -73,6 +73,7 @@ export function StoreList() {
             );
 
             setStores(storesWithProducts);
+            setReceivedUnassigned(Array.isArray(receivedRes.data) ? receivedRes.data : []);
         } catch (error) {
             console.error("Error fetching data:", error);
         } finally {
@@ -190,6 +191,121 @@ export function StoreList() {
                         </CardContent>
                     </Card>
                 )}
+
+                {/* Received Unassigned Products */}
+                {!loading && receivedUnassigned.length > 0 && (() => {
+                    const byStore = receivedUnassigned.reduce((acc, p) => {
+                        const storeName = p.store_name || 'Không xác định';
+                        if (!acc[storeName]) acc[storeName] = [];
+                        acc[storeName].push(p);
+                        return acc;
+                    }, {} as Record<string, Product[]>);
+
+                    return (
+                        <div>
+                            <h2 className="text-xl font-bold text-gray-800 mb-3">
+                                Hàng nhận từ NSX chưa có khách ({receivedUnassigned.length} sản phẩm)
+                            </h2>
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                {Object.entries(byStore).map(([storeName, products]) => {
+                                    const countByType = products.reduce((acc, p) => {
+                                        acc[p.product_type] = (acc[p.product_type] || 0) + 1;
+                                        return acc;
+                                    }, {} as Record<string, number>);
+
+                                    return (
+                                        <Card key={storeName}>
+                                            <CardHeader>
+                                                <div className="flex items-center gap-2">
+                                                    <StoreIcon className="h-5 w-5 text-orange-500" />
+                                                    <CardTitle>{storeName}</CardTitle>
+                                                    <span className="ml-auto text-sm font-normal text-gray-500">
+                                                        {products.length} sản phẩm
+                                                    </span>
+                                                </div>
+                                                <div className="flex gap-2 flex-wrap mt-1">
+                                                    {Object.entries(countByType).map(([type, count]) => (
+                                                        <span key={type} className="text-xs bg-orange-100 text-orange-700 px-2 py-0.5 rounded font-medium">
+                                                            {count} x {type}
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                            </CardHeader>
+                                            <CardContent>
+                                                <div className="overflow-x-auto">
+                                                    <table className="w-full text-sm">
+                                                        <thead className="bg-gray-50">
+                                                            <tr>
+                                                                <th className="px-3 py-2 text-left">ID</th>
+                                                                <th className="px-3 py-2 text-left">Mã SP</th>
+                                                                <th className="px-3 py-2 text-left">Loại</th>
+                                                            </tr>
+                                                        </thead>
+                                                        {(() => {
+                                                            const byTx = products.reduce((acc, p) => {
+                                                                const key = p.transaction_code || 'Khác';
+                                                                if (!acc[key]) acc[key] = [];
+                                                                acc[key].push(p);
+                                                                return acc;
+                                                            }, {} as Record<string, Product[]>);
+
+                                                            return Object.entries(byTx).map(([txCode, txProducts]) => {
+                                                                const groupKey = `${storeName}-${txCode}`;
+                                                                const isExpanded = expandedGroups[groupKey];
+                                                                const txDate = txProducts[0]?.order_date
+                                                                    ? new Date(txProducts[0].order_date).toLocaleDateString('vi-VN')
+                                                                    : '';
+                                                                const summary = Object.entries(
+                                                                    txProducts.reduce((acc, p) => {
+                                                                        acc[p.product_type] = (acc[p.product_type] || 0) + 1;
+                                                                        return acc;
+                                                                    }, {} as Record<string, number>)
+                                                                ).map(([t, c]) => `${c} x ${t}`).join(', ');
+
+                                                                return (
+                                                                    <tbody key={txCode}>
+                                                                        <tr
+                                                                            className="bg-orange-50/50 border-y border-gray-200 cursor-pointer hover:bg-orange-100/50 transition-colors"
+                                                                            onClick={() => toggleGroup(storeName, txCode)}
+                                                                        >
+                                                                            <td colSpan={3} className="px-3 py-2">
+                                                                                <div className="flex items-center gap-3">
+                                                                                    <div className="text-gray-500">
+                                                                                        {isExpanded ? <ChevronDown size={20} /> : <ChevronRight size={20} />}
+                                                                                    </div>
+                                                                                    <div className="flex justify-between items-center w-full">
+                                                                                        <div className="flex flex-col">
+                                                                                            <span className="font-bold text-gray-700">Giao dịch: {txCode}</span>
+                                                                                            {txDate && <span className="text-xs text-gray-500">Ngày: {txDate}</span>}
+                                                                                        </div>
+                                                                                        <span className="text-xs font-semibold text-gray-600 bg-white border border-gray-200 px-2 py-1 rounded shadow-sm">
+                                                                                            {summary}
+                                                                                        </span>
+                                                                                    </div>
+                                                                                </div>
+                                                                            </td>
+                                                                        </tr>
+                                                                        {isExpanded && txProducts.map(p => (
+                                                                            <tr key={p.id} className="border-b hover:bg-gray-50">
+                                                                                <td className="px-3 py-2 text-gray-500">#{p.id}</td>
+                                                                                <td className="px-3 py-2 font-mono text-xs">{p.product_code || '-'}</td>
+                                                                                <td className="px-3 py-2">{p.product_type}</td>
+                                                                            </tr>
+                                                                        ))}
+                                                                    </tbody>
+                                                                );
+                                                            });
+                                                        })()}
+                                                    </table>
+                                                </div>
+                                            </CardContent>
+                                        </Card>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    );
+                })()}
 
                 {/* Store List */}
                 {loading ? (

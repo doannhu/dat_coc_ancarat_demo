@@ -37,6 +37,13 @@ async def read_pending_manufacturer_products(
     """Get products from customer orders not yet ordered from manufacturer"""
     return await service.get_pending_manufacturer_order()
 
+@router.get("/received-unassigned", response_model=List[product_schema.Product])
+async def read_received_unassigned_products(
+    service: ProductService = Depends(get_service)
+):
+    """Get products with status 'Đã nhận hàng NSX' not assigned to any customer"""
+    return await service.get_received_unassigned()
+
 from pydantic import BaseModel
 
 class ProductIdsRequest(BaseModel):

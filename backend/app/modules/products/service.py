@@ -234,6 +234,26 @@ class ProductService:
             
         return results
 
+    async def get_received_unassigned(self) -> List[schemas.Product]:
+        """Get products with status RECEIVED_FROM_MFR not assigned to any customer"""
+        products = await self.repository.get_received_unassigned()
+        if not products:
+            return products
+
+        product_ids = [p.id for p in products]
+        manufacturer_codes = await self.repository.get_manufacturer_codes_for_products(product_ids)
+
+        for p in products:
+            p.store_name = p.store.name if p.store else None
+            p.transaction_code = manufacturer_codes.get(p.id)
+            received_tx = next(
+                (t for t in getattr(p, 'transactions', []) if t.type == TransactionType.MANUFACTURER_RECEIVED),
+                None
+            )
+            if received_tx:
+                p.order_date = received_tx.created_at
+        return products
+
     async def get_pending_manufacturer_order(self) -> List[schemas.Product]:
         """Get products from customer orders not yet ordered from manufacturer"""
         products = await self.repository.get_pending_manufacturer_order()
