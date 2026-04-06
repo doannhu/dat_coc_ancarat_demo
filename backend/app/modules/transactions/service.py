@@ -490,7 +490,8 @@ class TransactionService:
             if all(p.status == ProductStatus.SOLD for p in group): return ProductStatus.SOLD
             if all(p.status == ProductStatus.AVAILABLE for p in group): return ProductStatus.AVAILABLE
             if all(p.status == ProductStatus.ORDERED for p in group): return ProductStatus.ORDERED
-            raise ValueError("Tất cả sản phẩm trong một nhóm phải có cùng trạng thái (Đã bán / Có sẵn / Đã đặt hàng).")
+            if all(p.status == ProductStatus.RECEIVED_FROM_MFR for p in group): return ProductStatus.RECEIVED_FROM_MFR
+            raise ValueError("Tất cả sản phẩm trong một nhóm phải có cùng trạng thái (Đã bán / Có sẵn / Đã đặt hàng / Đã nhận hàng NSX).")
         s1 = get_status(g1)
         s2 = get_status(g2)
         customer_id = None
@@ -572,6 +573,14 @@ class TransactionService:
                 await self.product_repository.update(db_obj=p, obj_in=product_schemas.ProductUpdate(status=ProductStatus.AVAILABLE, store_id=g1[0].store_id))
             for p in g1:
                 await self.product_repository.update(db_obj=p, obj_in=product_schemas.ProductUpdate(status=ProductStatus.ORDERED, store_id=g2[0].store_id))
+
+        elif s1 == ProductStatus.ORDERED and s2 == ProductStatus.RECEIVED_FROM_MFR:
+            await link_and_swap_items(g1, g2)
+            # No status changes — both products keep their original statuses
+
+        elif s2 == ProductStatus.ORDERED and s1 == ProductStatus.RECEIVED_FROM_MFR:
+            await link_and_swap_items(g2, g1)
+            # No status changes — both products keep their original statuses
 
         else:
             raise ValueError("Hoán đổi phải có ít nhất 1 nhóm sản phẩm Đã bán hoặc Đã đặt hàng.")

@@ -113,8 +113,8 @@ class ProductService:
         product = await self.repository.get(id=product_id)
         if not product:
             raise ValueError(f"Product {product_id} not found")
-        if product.status != ProductStatus.AVAILABLE:
-            raise ValueError(f"Only available products can be moved")
+        if product.status not in (ProductStatus.AVAILABLE, ProductStatus.RECEIVED_FROM_MFR):
+            raise ValueError(f"Only available or received-from-manufacturer products can be moved")
         
         update_data = schemas.ProductUpdate(store_id=new_store_id)
         return await self.repository.update(db_obj=product, obj_in=update_data)

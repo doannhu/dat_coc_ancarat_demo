@@ -239,6 +239,7 @@ export function StoreList() {
                                                                 <th className="px-3 py-2 text-left">ID</th>
                                                                 <th className="px-3 py-2 text-left">Mã SP</th>
                                                                 <th className="px-3 py-2 text-left">Loại</th>
+                                                                <th className="px-3 py-2 text-center">Action</th>
                                                             </tr>
                                                         </thead>
                                                         {(() => {
@@ -268,7 +269,7 @@ export function StoreList() {
                                                                             className="bg-orange-50/50 border-y border-gray-200 cursor-pointer hover:bg-orange-100/50 transition-colors"
                                                                             onClick={() => toggleGroup(storeName, txCode)}
                                                                         >
-                                                                            <td colSpan={3} className="px-3 py-2">
+                                                                            <td colSpan={4} className="px-3 py-2">
                                                                                 <div className="flex items-center gap-3">
                                                                                     <div className="text-gray-500">
                                                                                         {isExpanded ? <ChevronDown size={20} /> : <ChevronRight size={20} />}
@@ -290,6 +291,16 @@ export function StoreList() {
                                                                                 <td className="px-3 py-2 text-gray-500">#{p.id}</td>
                                                                                 <td className="px-3 py-2 font-mono text-xs">{p.product_code || '-'}</td>
                                                                                 <td className="px-3 py-2">{p.product_type}</td>
+                                                                                <td className="px-3 py-2 text-center">
+                                                                                    <Button
+                                                                                        variant="ghost"
+                                                                                        size="sm"
+                                                                                        onClick={() => setSelectedProduct({ ...p, store_name: storeName })}
+                                                                                        className="text-blue-600 hover:text-blue-800"
+                                                                                    >
+                                                                                        Chuyển kho
+                                                                                    </Button>
+                                                                                </td>
                                                                             </tr>
                                                                         ))}
                                                                     </tbody>

@@ -66,6 +66,7 @@ function ProductPicker({
     onRemove,
     customers,
     availableProducts,
+    receivedProducts,
     stores,
 }: {
     label: string;
@@ -74,6 +75,7 @@ function ProductPicker({
     onRemove: (productId: number) => void;
     customers: Customer[];
     availableProducts: Product[];
+    receivedProducts: Product[];
     stores: Store[];
 }) {
     const [mode, setMode] = useState<'customer' | 'inventory'>('customer');
@@ -308,8 +310,11 @@ function ProductPicker({
                             </select>
                         </div>
                         {(() => {
-                            const filteredAvailableProducts = availableProducts.filter(p => !(p.status === 'Có sẵn' && !p.is_ordered) && (storeFilterId === 'all' || p.store?.id === storeFilterId || p.store_id === storeFilterId));
-                            if (filteredAvailableProducts.length === 0) return <div className="text-center py-4 text-sm text-gray-500">Không có sản phẩm trong kho</div>;
+                            const storeMatch = (p: Product) => storeFilterId === 'all' || p.store?.id === storeFilterId || p.store_id === storeFilterId;
+                            const filteredAvailable = availableProducts.filter(p => !(p.status === 'Có sẵn' && !p.is_ordered) && storeMatch(p));
+                            const filteredReceived = receivedProducts.filter(storeMatch);
+                            const allProducts = [...filteredAvailable, ...filteredReceived];
+                            if (allProducts.length === 0) return <div className="text-center py-4 text-sm text-gray-500">Không có sản phẩm trong kho</div>;
                             return (
                                 <div className="max-h-64 overflow-y-auto border rounded">
                                     <table className="w-full text-sm">
@@ -318,21 +323,24 @@ function ProductPicker({
                                                 <th className="px-3 py-2 text-left">ID</th>
                                                 <th className="px-3 py-2 text-left">Loại</th>
                                                 <th className="px-3 py-2 text-left">Kho</th>
-                                                <th className="px-3 py-2 text-right">Giá</th>
+                                                <th className="px-3 py-2 text-left">Trạng thái</th>
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            {filteredAvailableProducts.map(p => (
+                                            {allProducts.map(p => (
                                                 <tr
                                                     key={p.id}
-
                                                     onClick={() => handlePickProduct(p)}
                                                     className={`border-b hover:bg-green-50 cursor-pointer transition-colors ${selectedProducts.find(sp => sp.id === p.id) ? 'bg-green-100 opacity-60' : ''}`}
                                                 >
                                                     <td className="px-3 py-2 font-medium">#{p.id}</td>
                                                     <td className="px-3 py-2">{p.product_type}</td>
                                                     <td className="px-3 py-2 text-gray-600">{p.store?.name || p.store_name || '-'}</td>
-                                                    <td className="px-3 py-2 text-right">{formatCurrency(p.last_price || 0)}</td>
+                                                    <td className="px-3 py-2">
+                                                        <span className={`px-1.5 py-0.5 rounded text-xs font-medium ${p.status === 'Đã nhận hàng NSX' ? 'bg-orange-100 text-orange-700' : 'bg-green-100 text-green-700'}`}>
+                                                            {p.status}
+                                                        </span>
+                                                    </td>
                                                 </tr>
                                             ))}
                                         </tbody>
@@ -367,6 +375,7 @@ export function SwapProducts() {
     // Shared data for pickers
     const [customers, setCustomers] = useState<Customer[]>([]);
     const [availableProducts, setAvailableProducts] = useState<Product[]>([]);
+    const [receivedProducts, setReceivedProducts] = useState<Product[]>([]);
 
     useEffect(() => {
         fetchStaff();
@@ -406,8 +415,12 @@ export function SwapProducts() {
 
     const fetchAvailableProducts = async () => {
         try {
-            const res = await axios.get('/api/v1/products/available?limit=1000');
-            setAvailableProducts(res.data);
+            const [availRes, receivedRes] = await Promise.all([
+                axios.get('/api/v1/products/available?limit=1000'),
+                axios.get('/api/v1/products/received-unassigned')
+            ]);
+            setAvailableProducts(availRes.data);
+            setReceivedProducts(Array.isArray(receivedRes.data) ? receivedRes.data : []);
         } catch (e) {
             console.error("Failed to fetch available products", e);
         }
@@ -453,7 +466,9 @@ export function SwapProducts() {
         (products2.every(p => p.status === 'Đã bán') && products1.every(p => p.status === 'Có sẵn')) ||
         (products1.every(p => p.status === 'Đã bán') && products2.every(p => p.status === 'Đã bán')) ||
         (products1.every(p => p.status === 'Đã đặt hàng') && products2.every(p => p.status === 'Có sẵn')) ||
-        (products2.every(p => p.status === 'Đã đặt hàng') && products1.every(p => p.status === 'Có sẵn'))
+        (products2.every(p => p.status === 'Đã đặt hàng') && products1.every(p => p.status === 'Có sẵn')) ||
+        (products1.every(p => p.status === 'Đã đặt hàng') && products2.every(p => p.status === 'Đã nhận hàng NSX')) ||
+        (products2.every(p => p.status === 'Đã đặt hàng') && products1.every(p => p.status === 'Đã nhận hàng NSX'))
     );
 
     return (
@@ -490,6 +505,11 @@ export function SwapProducts() {
                                 <td className="px-4 py-2"><span className="bg-red-100 text-red-700 px-2 py-0.5 rounded text-xs font-medium">Đã bán</span></td>
                                 <td className="px-4 py-2"><span className="bg-red-100 text-red-700 px-2 py-0.5 rounded text-xs font-medium">Đã bán</span></td>
                                 <td className="px-4 py-2 text-gray-600">Khách A ↔ Khách B</td>
+                            </tr>
+                            <tr>
+                                <td className="px-4 py-2"><span className="bg-purple-100 text-purple-700 px-2 py-0.5 rounded text-xs font-medium">Đã đặt hàng</span></td>
+                                <td className="px-4 py-2"><span className="bg-orange-100 text-orange-700 px-2 py-0.5 rounded text-xs font-medium">Đã nhận hàng NSX</span></td>
+                                <td className="px-4 py-2 text-gray-600">SP đã đặt NSX ↔ hàng nhận từ NSX</td>
                             </tr>
                         </tbody>
                     </table>
@@ -554,6 +574,7 @@ export function SwapProducts() {
                                 onRemove={(pid) => setProducts1(products1.filter(p => p.id !== pid))}
                                 customers={customers}
                                 availableProducts={availableProducts}
+                                receivedProducts={receivedProducts}
                                 stores={storeList}
                             />
                         </CardContent>
@@ -571,6 +592,7 @@ export function SwapProducts() {
                                 onRemove={(pid) => setProducts2(products2.filter(p => p.id !== pid))}
                                 customers={customers}
                                 availableProducts={availableProducts}
+                                receivedProducts={receivedProducts}
                                 stores={storeList}
                             />
                         </CardContent>
@@ -622,7 +644,7 @@ export function SwapProducts() {
                                 <div className="flex items-center gap-2 text-yellow-600 bg-yellow-50 p-3 rounded-md text-sm mb-4">
                                     <AlertTriangle className="h-4 w-4 flex-shrink-0" />
                                     <span>
-                                        Hoán đổi chỉ hỗ trợ: cùng trạng thái trong mỗi nhóm, và kết hợp "Đã bán" ↔ "Có sẵn", "Đã đặt hàng" ↔ "Có sẵn", hoặc "Đã bán" ↔ "Đã bán". Không được trùng sản phẩm.
+                                        Hoán đổi chỉ hỗ trợ: "Đã bán" ↔ "Có sẵn", "Đã bán" ↔ "Đã bán", "Đã đặt hàng" ↔ "Có sẵn", "Đã đặt hàng" ↔ "Đã nhận hàng NSX". Không được trùng sản phẩm.
                                     </span>
                                 </div>
                             )}
