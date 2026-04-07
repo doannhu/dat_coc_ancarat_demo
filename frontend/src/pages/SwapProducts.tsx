@@ -468,7 +468,9 @@ export function SwapProducts() {
         (products1.every(p => p.status === 'Đã đặt hàng') && products2.every(p => p.status === 'Có sẵn')) ||
         (products2.every(p => p.status === 'Đã đặt hàng') && products1.every(p => p.status === 'Có sẵn')) ||
         (products1.every(p => p.status === 'Đã đặt hàng') && products2.every(p => p.status === 'Đã nhận hàng NSX')) ||
-        (products2.every(p => p.status === 'Đã đặt hàng') && products1.every(p => p.status === 'Đã nhận hàng NSX'))
+        (products2.every(p => p.status === 'Đã đặt hàng') && products1.every(p => p.status === 'Đã nhận hàng NSX')) ||
+        (products1.every(p => p.status === 'Đã bán') && products2.every(p => p.status === 'Đã nhận hàng NSX')) ||
+        (products2.every(p => p.status === 'Đã bán') && products1.every(p => p.status === 'Đã nhận hàng NSX'))
     );
 
     return (
@@ -510,6 +512,11 @@ export function SwapProducts() {
                                 <td className="px-4 py-2"><span className="bg-purple-100 text-purple-700 px-2 py-0.5 rounded text-xs font-medium">Đã đặt hàng</span></td>
                                 <td className="px-4 py-2"><span className="bg-orange-100 text-orange-700 px-2 py-0.5 rounded text-xs font-medium">Đã nhận hàng NSX</span></td>
                                 <td className="px-4 py-2 text-gray-600">SP đã đặt NSX ↔ hàng nhận từ NSX</td>
+                            </tr>
+                            <tr>
+                                <td className="px-4 py-2"><span className="bg-red-100 text-red-700 px-2 py-0.5 rounded text-xs font-medium">Đã bán</span></td>
+                                <td className="px-4 py-2"><span className="bg-orange-100 text-orange-700 px-2 py-0.5 rounded text-xs font-medium">Đã nhận hàng NSX</span></td>
+                                <td className="px-4 py-2 text-gray-600">SP khách hàng ↔ hàng nhận từ NSX</td>
                             </tr>
                         </tbody>
                     </table>
@@ -644,7 +651,7 @@ export function SwapProducts() {
                                 <div className="flex items-center gap-2 text-yellow-600 bg-yellow-50 p-3 rounded-md text-sm mb-4">
                                     <AlertTriangle className="h-4 w-4 flex-shrink-0" />
                                     <span>
-                                        Hoán đổi chỉ hỗ trợ: "Đã bán" ↔ "Có sẵn", "Đã bán" ↔ "Đã bán", "Đã đặt hàng" ↔ "Có sẵn", "Đã đặt hàng" ↔ "Đã nhận hàng NSX". Không được trùng sản phẩm.
+                                        Hoán đổi chỉ hỗ trợ: "Đã bán" ↔ "Có sẵn", "Đã bán" ↔ "Đã bán", "Đã đặt hàng" ↔ "Có sẵn", "Đã đặt hàng" ↔ "Đã nhận hàng NSX", "Đã bán" ↔ "Đã nhận hàng NSX". Không được trùng sản phẩm.
                                     </span>
                                 </div>
                             )}

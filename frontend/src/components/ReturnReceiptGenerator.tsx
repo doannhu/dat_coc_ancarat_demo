@@ -63,6 +63,59 @@ interface ReturnReceiptGeneratorProps {
     fulfillmentDate?: string;
 }
 
+// Helper: convert number to Vietnamese words
+function numberToVietnameseWords(n: number): string {
+    if (n === 0) return 'Không đồng';
+
+    const ones = ['', 'một', 'hai', 'ba', 'bốn', 'năm', 'sáu', 'bảy', 'tám', 'chín'];
+    const units = ['', 'nghìn', 'triệu', 'tỷ'];
+
+    function readGroup(num: number): string {
+        const h = Math.floor(num / 100);
+        const t = Math.floor((num % 100) / 10);
+        const o = num % 10;
+        let result = '';
+
+        if (h > 0) {
+            result += ones[h] + ' trăm ';
+            if (t === 0 && o > 0) result += 'lẻ ';
+        }
+
+        if (t > 1) {
+            result += ones[t] + ' mươi ';
+            if (o === 1) result += 'mốt ';
+            else if (o === 5) result += 'lăm ';
+            else if (o > 0) result += ones[o] + ' ';
+        } else if (t === 1) {
+            result += 'mười ';
+            if (o === 5) result += 'lăm ';
+            else if (o > 0) result += ones[o] + ' ';
+        } else if (o > 0) {
+            result += ones[o] + ' ';
+        }
+
+        return result.trim();
+    }
+
+    const groups: number[] = [];
+    let temp = Math.floor(n);
+    while (temp > 0) {
+        groups.push(temp % 1000);
+        temp = Math.floor(temp / 1000);
+    }
+
+    let result = '';
+    for (let i = groups.length - 1; i >= 0; i--) {
+        if (groups[i] > 0) {
+            result += readGroup(groups[i]) + ' ' + units[i] + ' ';
+        }
+    }
+
+    result = result.trim();
+    // Capitalize first letter
+    result = result.charAt(0).toUpperCase() + result.slice(1) + ' đồng';
+    return result;
+}
 
 function formatVND(amount: number): string {
     return new Intl.NumberFormat('vi-VN').format(amount);
@@ -143,6 +196,8 @@ export function ReturnReceiptGenerator({ order, disabled = false, fulfillmentDat
     const grouped = groupItems(order.items);
     const totalQty = grouped.reduce((s, g) => s + g.quantity, 0);
     const totalWeight = grouped.reduce((s, g) => s + g.totalWeight, 0);
+    const totalPrice = grouped.reduce((s, g) => s + g.totalPrice, 0);
+    const totalInWords = numberToVietnameseWords(totalPrice);
 
     const handleDownloadPdf = async () => {
         if (!receiptRef.current) return;
@@ -248,7 +303,7 @@ export function ReturnReceiptGenerator({ order, disabled = false, fulfillmentDat
                                         {/* Title */}
                                         <div style={{ textAlign: 'center', marginTop: '30px', marginBottom: '20px' }}>
                                             <h1 style={{ fontSize: '19px', marginBottom: '5px', fontWeight: 'bold' }}>
-                                                GIẤY XÁC NHẬN TRẢ HÀNG
+                                                HÓA ĐƠN BÁN HÀNG
                                             </h1>
                                         </div>
 
@@ -295,6 +350,8 @@ export function ReturnReceiptGenerator({ order, disabled = false, fulfillmentDat
                                                     <th style={thStyle}>SL(cái)</th>
                                                     <th style={thStyle}>KL/1SP (lượng/kg)</th>
                                                     <th style={thStyle}>Tổng KL (lượng/kg)</th>
+                                                    <th style={thStyle}>Đơn giá/lượng (VND)</th>
+                                                    <th style={thStyle}>Thành tiền (VND)</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
@@ -316,6 +373,8 @@ export function ReturnReceiptGenerator({ order, disabled = false, fulfillmentDat
                                                                     (g.productType.includes('1L') || g.productType.includes('1 lượng')) ? `${g.quantity} Lượng` :
                                                                         formatVND(g.totalWeight)}
                                                         </td>
+                                                        <td style={tdStyle}>{formatVND(g.pricePerUnit)}</td>
+                                                        <td style={tdStyle}>{formatVND(g.totalPrice)}</td>
                                                     </tr>
                                                 ))}
                                                 <tr style={{ fontWeight: 'bold' }}>
@@ -348,9 +407,13 @@ export function ReturnReceiptGenerator({ order, disabled = false, fulfillmentDat
                                                             return parts.length > 0 ? parts.join(', ') : formatVND(totalWeight);
                                                         })()}
                                                     </td>
+                                                    <td style={tdStyle}></td>
+                                                    <td style={tdStyle}>{formatVND(totalPrice)}</td>
                                                 </tr>
                                             </tbody>
                                         </table>
+
+                                        <p><strong>Thành tiền (bằng chữ):</strong> {totalInWords}.</p>
 
                                         {/* Signatures */}
                                         <div style={{ marginTop: '40px', display: 'flex', justifyContent: 'space-between' }}>
