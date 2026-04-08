@@ -584,20 +584,20 @@ class TransactionService:
 
         elif s1 == ProductStatus.SOLD and s2 == ProductStatus.RECEIVED_FROM_MFR:
             await link_and_swap_items(g1, g2)
-            for p in g1:
-                await self.product_repository.update(db_obj=p, obj_in=product_schemas.ProductUpdate(status=ProductStatus.RECEIVED_FROM_MFR, store_id=g2[0].store_id))
-            for p in g2:
-                await self.product_repository.update(db_obj=p, obj_in=product_schemas.ProductUpdate(status=ProductStatus.SOLD, store_id=g1[0].store_id))
+            # No status changes
 
         elif s2 == ProductStatus.SOLD and s1 == ProductStatus.RECEIVED_FROM_MFR:
             await link_and_swap_items(g2, g1)
-            for p in g2:
-                await self.product_repository.update(db_obj=p, obj_in=product_schemas.ProductUpdate(status=ProductStatus.RECEIVED_FROM_MFR, store_id=g1[0].store_id))
-            for p in g1:
-                await self.product_repository.update(db_obj=p, obj_in=product_schemas.ProductUpdate(status=ProductStatus.SOLD, store_id=g2[0].store_id))
+            # No status changes
+
+
+        elif s1 == ProductStatus.RECEIVED_FROM_MFR and s2 == ProductStatus.RECEIVED_FROM_MFR:
+            # Customer A <-> Customer B (both received from MFR)
+            await link_and_swap_items(g1, g2)
+            await link_and_swap_items(g2, g1)
 
         else:
-            raise ValueError("Hoán đổi chỉ hỗ trợ các trường hợp: Đã bán ↔ Có sẵn, Đã bán ↔ Đã bán, Đã đặt hàng ↔ Có sẵn, Đã đặt hàng ↔ Đã nhận hàng NSX, Đã bán ↔ Đã nhận hàng NSX.")
+            raise ValueError("Hoán đổi chỉ hỗ trợ các trường hợp: Đã bán ↔ Có sẵn, Đã bán ↔ Đã bán, Đã đặt hàng ↔ Có sẵn, Đã đặt hàng ↔ Đã nhận hàng NSX, Đã bán ↔ Đã nhận hàng NSX, Đã nhận hàng NSX ↔ Đã nhận hàng NSX.")
         # Create SWAP transaction
         transaction = Transaction(
             type=TransactionType.SWAP,
