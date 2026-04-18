@@ -79,6 +79,7 @@ class OrderUpdate(BaseModel):
     cash_amount: Optional[float] = None
     bank_transfer_amount: Optional[float] = None
     transaction_code: Optional[str] = None
+    delivered_to_kc: Optional[bool] = None
 
 class ManufacturerOrderUpdate(BaseModel):
     code: Optional[str] = None
@@ -106,6 +107,7 @@ class Transaction(TransactionInDBBase):
     payment_method: Optional[str] = None
     cash_amount: float = 0.0
     bank_transfer_amount: float = 0.0
+    delivered_to_kc: bool = False
 
 from typing import Dict
 

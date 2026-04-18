@@ -61,6 +61,7 @@ interface Transaction {
     staff?: Staff;
     order_status?: string;  // 'Mua lại', 'Đã giao', 'Bán lại NSX', or null
     fulfillment_date?: string;
+    delivered_to_kc?: boolean;
 }
 
 interface StoreStats {
@@ -119,6 +120,18 @@ export const Orders = () => {
             }
             return next;
         });
+    };
+
+    const handleToggleKC = async (orderId: number, isDelivered: boolean) => {
+        try {
+            await axios.put(`/api/v1/transactions/order/${orderId}`, {
+                delivered_to_kc: isDelivered
+            });
+            setOrders(prev => prev.map(o => o.id === orderId ? { ...o, delivered_to_kc: isDelivered } : o));
+        } catch (error) {
+            console.error("Error updating KC status:", error);
+            alert("Lỗi khi cập nhật trạng thái KC");
+        }
     };
 
     const toggleProductTx = async (productId: number) => {
@@ -443,6 +456,7 @@ export const Orders = () => {
                                     <th className={styles.th}>Nhân viên</th>
                                     <th className={styles.th}>Sản phẩm</th>
                                     <th className={styles.th + " text-right"}>Tổng tiền</th>
+                                    <th className={styles.th + " text-center"}>Đưa KC</th>
                                     <th className={styles.th}>Hợp đồng</th>
                                     <th className={styles.th}>Trả hàng</th>
                                 </tr>
@@ -450,11 +464,11 @@ export const Orders = () => {
                             <tbody>
                                 {loading ? (
                                     <tr>
-                                        <td colSpan={10} className={styles.loading}>Loading...</td>
+                                        <td colSpan={11} className={styles.loading}>Loading...</td>
                                     </tr>
                                 ) : orders.length === 0 ? (
                                     <tr>
-                                        <td colSpan={10} className={styles.loading}>Không có đơn hàng trong khoảng ngày này.</td>
+                                        <td colSpan={11} className={styles.loading}>Không có đơn hàng trong khoảng ngày này.</td>
                                     </tr>
                                 ) : (
                                     filteredOrders.map((order) => (
@@ -635,6 +649,14 @@ export const Orders = () => {
                                             </td>
                                             <td className={styles.totalMoney}>
                                                 {formatCurrency(calculateTotal(order.items))}
+                                            </td>
+                                            <td className={styles.td + " text-center"}>
+                                                <input
+                                                    type="checkbox"
+                                                    checked={order.delivered_to_kc || false}
+                                                    onChange={(e) => handleToggleKC(order.id, e.target.checked)}
+                                                    className="w-4 h-4 cursor-pointer"
+                                                />
                                             </td>
                                             <td className={styles.td + " text-center"}>
                                                 <ContractGenerator order={order} />

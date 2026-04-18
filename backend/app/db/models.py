@@ -106,6 +106,7 @@ class Transaction(Base):
     code = Column(String, nullable=True) # Manufacturer manual code
     transaction_code = Column(String, nullable=True, unique=True) # Auto-generated system code
     due_date = Column(Date, nullable=True)  # Ngày hẹn trả
+    delivered_to_kc = Column(Boolean, default=False)
     
     product_items = relationship(
         "Product",
