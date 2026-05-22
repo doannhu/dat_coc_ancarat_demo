@@ -70,9 +70,37 @@ export function ManufacturerOrderList() {
 
     const [orders, setOrders] = useState<Transaction[]>([]);
     const [pendingProducts, setPendingProducts] = useState<Product[]>([]);
-    const [startDate, setStartDate] = useState<string>(todayHanoi());
-    const [endDate, setEndDate] = useState<string>(todayHanoi());
+    const [saveDateRange, setSaveDateRange] = useState<boolean>(() => {
+        return localStorage.getItem('manufacturer_orders_save_date_range') === 'true';
+    });
+    const [startDate, setStartDate] = useState<string>(() => {
+        const savedSave = localStorage.getItem('manufacturer_orders_save_date_range') === 'true';
+        if (savedSave) {
+            const savedStart = localStorage.getItem('manufacturer_orders_saved_start_date');
+            if (savedStart) return savedStart;
+        }
+        return todayHanoi();
+    });
+    const [endDate, setEndDate] = useState<string>(() => {
+        const savedSave = localStorage.getItem('manufacturer_orders_save_date_range') === 'true';
+        if (savedSave) {
+            const savedEnd = localStorage.getItem('manufacturer_orders_saved_end_date');
+            if (savedEnd) return savedEnd;
+        }
+        return todayHanoi();
+    });
     const [loading, setLoading] = useState(false);
+
+    useEffect(() => {
+        localStorage.setItem('manufacturer_orders_save_date_range', String(saveDateRange));
+        if (saveDateRange) {
+            localStorage.setItem('manufacturer_orders_saved_start_date', startDate);
+            localStorage.setItem('manufacturer_orders_saved_end_date', endDate);
+        } else {
+            localStorage.removeItem('manufacturer_orders_saved_start_date');
+            localStorage.removeItem('manufacturer_orders_saved_end_date');
+        }
+    }, [saveDateRange, startDate, endDate]);
 
     // Track delivery status changes
     const [deliveryChanges, setDeliveryChanges] = useState<Map<number, boolean>>(new Map());
@@ -227,6 +255,20 @@ export function ManufacturerOrderList() {
                                     onChange={(e) => setEndDate(e.target.value)}
                                 />
                             </div>
+
+                            <label className="flex items-center gap-2 cursor-pointer select-none pb-2.5">
+                                <div className="relative inline-flex items-center">
+                                    <input
+                                        type="checkbox"
+                                        checked={saveDateRange}
+                                        onChange={(e) => setSaveDateRange(e.target.checked)}
+                                        className="sr-only peer"
+                                    />
+                                    <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600 peer-disabled:opacity-50"></div>
+                                </div>
+                                <span className="text-sm font-medium text-gray-700">Lưu bộ lọc ngày</span>
+                            </label>
+
                             <Button onClick={fetchData}>Tải lại</Button>
                         </div>
                     </CardContent>

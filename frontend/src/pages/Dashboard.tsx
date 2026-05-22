@@ -35,12 +35,12 @@ interface StepProps {
 }
 
 const itemVariants: Variants = {
-    hidden: { opacity: 0, y: 20 },
-    visible: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 300, damping: 24 } }
+    hidden: { opacity: 1, y: 0 },
+    visible: { opacity: 1, y: 0 }
 };
 
 const arrowVariants = {
-    hidden: { opacity: 0, scale: 0.5 },
+    hidden: { opacity: 1, scale: 1 },
     visible: { opacity: 1, scale: 1 }
 };
 
@@ -122,11 +122,8 @@ export function Dashboard() {
     const allowed = (route: string) => isFeatureAllowed(route, user?.role);
 
     const containerVariants = {
-        hidden: { opacity: 0 },
-        visible: {
-            opacity: 1,
-            transition: { staggerChildren: 0.1, delayChildren: 0.2 }
-        }
+        hidden: { opacity: 1 },
+        visible: { opacity: 1 }
     };
 
     return (

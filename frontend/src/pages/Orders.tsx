@@ -101,14 +101,42 @@ export const Orders = () => {
     const navigate = useNavigate();
     const [orders, setOrders] = useState<Transaction[]>([]);
     const [stats, setStats] = useState<TransactionStats | null>(null);
-    const [startDate, setStartDate] = useState<string>(startOfMonthHanoi());
-    const [endDate, setEndDate] = useState<string>(todayHanoi());
+    const [saveDateRange, setSaveDateRange] = useState<boolean>(() => {
+        return localStorage.getItem('orders_save_date_range') === 'true';
+    });
+    const [startDate, setStartDate] = useState<string>(() => {
+        const savedSave = localStorage.getItem('orders_save_date_range') === 'true';
+        if (savedSave) {
+            const savedStart = localStorage.getItem('orders_saved_start_date');
+            if (savedStart) return savedStart;
+        }
+        return startOfMonthHanoi();
+    });
+    const [endDate, setEndDate] = useState<string>(() => {
+        const savedSave = localStorage.getItem('orders_save_date_range') === 'true';
+        if (savedSave) {
+            const savedEnd = localStorage.getItem('orders_saved_end_date');
+            if (savedEnd) return savedEnd;
+        }
+        return todayHanoi();
+    });
     const [loading, setLoading] = useState(false);
     const [customerSearch, setCustomerSearch] = useState('');
     const [activeSearch, setActiveSearch] = useState('');
     const [expandedOrders, setExpandedOrders] = useState<Set<number>>(new Set());
     const [expandedProducts, setExpandedProducts] = useState<Record<number, ProductTransaction[] | null>>({});
     const [selectedStore, setSelectedStore] = useState<string>('');
+
+    useEffect(() => {
+        localStorage.setItem('orders_save_date_range', String(saveDateRange));
+        if (saveDateRange) {
+            localStorage.setItem('orders_saved_start_date', startDate);
+            localStorage.setItem('orders_saved_end_date', endDate);
+        } else {
+            localStorage.removeItem('orders_saved_start_date');
+            localStorage.removeItem('orders_saved_end_date');
+        }
+    }, [saveDateRange, startDate, endDate]);
 
     const toggleOrder = (orderId: number) => {
         setExpandedOrders(prev => {
@@ -355,6 +383,21 @@ export const Orders = () => {
                         disabled={!!activeSearch}
                     />
                 </div>
+                
+                <label className="flex items-center gap-2 cursor-pointer select-none pb-2.5">
+                    <div className="relative inline-flex items-center">
+                        <input
+                            type="checkbox"
+                            checked={saveDateRange}
+                            onChange={(e) => setSaveDateRange(e.target.checked)}
+                            disabled={!!activeSearch}
+                            className="sr-only peer"
+                        />
+                        <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600 peer-disabled:opacity-50"></div>
+                    </div>
+                    <span className="text-sm font-medium text-gray-700">Lưu bộ lọc ngày</span>
+                </label>
+
                 <Button onClick={() => fetchOrders()} disabled={!!activeSearch}>Tải lại</Button>
 
                 <div>

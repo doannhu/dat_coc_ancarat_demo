@@ -23,11 +23,48 @@ interface Transaction {
 
 export function EditOrderList() {
     const navigate = useNavigate();
-    const [startDate, setStartDate] = useState(startOfMonthHanoi());
-    const [endDate, setEndDate] = useState(todayHanoi());
+    const [saveDateRange, setSaveDateRange] = useState<boolean>(() => {
+        return localStorage.getItem('edit_orders_save_date_range') === 'true';
+    });
+    const [startDate, setStartDate] = useState(() => {
+        const savedSave = localStorage.getItem('edit_orders_save_date_range') === 'true';
+        if (savedSave) {
+            const savedStart = localStorage.getItem('edit_orders_saved_start_date');
+            if (savedStart) return savedStart;
+        }
+        return startOfMonthHanoi();
+    });
+    const [endDate, setEndDate] = useState(() => {
+        const savedSave = localStorage.getItem('edit_orders_save_date_range') === 'true';
+        if (savedSave) {
+            const savedEnd = localStorage.getItem('edit_orders_saved_end_date');
+            if (savedEnd) return savedEnd;
+        }
+        return todayHanoi();
+    });
     const [transactions, setTransactions] = useState<Transaction[]>([]);
     const [loading, setLoading] = useState(false);
-    const [filterType, setFilterType] = useState<'all' | 'Đơn cọc' | 'Đặt hàng NSX' | 'Mua lại' | 'Hoán đổi'>('all');
+    const [filterType, setFilterType] = useState<'all' | 'Đơn cọc' | 'Đặt hàng NSX' | 'Mua lại' | 'Hoán đổi'>(() => {
+        const savedSave = localStorage.getItem('edit_orders_save_date_range') === 'true';
+        if (savedSave) {
+            const savedFilter = localStorage.getItem('edit_orders_saved_filter_type');
+            if (savedFilter) return savedFilter as any;
+        }
+        return 'all';
+    });
+
+    useEffect(() => {
+        localStorage.setItem('edit_orders_save_date_range', String(saveDateRange));
+        if (saveDateRange) {
+            localStorage.setItem('edit_orders_saved_start_date', startDate);
+            localStorage.setItem('edit_orders_saved_end_date', endDate);
+            localStorage.setItem('edit_orders_saved_filter_type', filterType);
+        } else {
+            localStorage.removeItem('edit_orders_saved_start_date');
+            localStorage.removeItem('edit_orders_saved_end_date');
+            localStorage.removeItem('edit_orders_saved_filter_type');
+        }
+    }, [saveDateRange, startDate, endDate, filterType]);
 
     useEffect(() => {
         fetchTransactions();
@@ -92,6 +129,20 @@ export function EditOrderList() {
                                 <label className="block text-sm font-medium mb-1">Ngày kết thúc</label>
                                 <Input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} />
                             </div>
+
+                            <label className="flex items-center gap-2 cursor-pointer select-none pb-2.5">
+                                <div className="relative inline-flex items-center">
+                                    <input
+                                        type="checkbox"
+                                        checked={saveDateRange}
+                                        onChange={(e) => setSaveDateRange(e.target.checked)}
+                                        className="sr-only peer"
+                                    />
+                                    <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600 peer-disabled:opacity-50"></div>
+                                </div>
+                                <span className="text-sm font-medium text-gray-700">Lưu bộ lọc</span>
+                            </label>
+
                             <Button onClick={fetchTransactions}>Tìm kiếm</Button>
                         </div>
 
