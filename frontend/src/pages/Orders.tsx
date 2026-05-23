@@ -126,6 +126,7 @@ export const Orders = () => {
     const [expandedOrders, setExpandedOrders] = useState<Set<number>>(new Set());
     const [expandedProducts, setExpandedProducts] = useState<Record<number, ProductTransaction[] | null>>({});
     const [selectedStore, setSelectedStore] = useState<string>('');
+    const [chartViewMode, setChartViewMode] = useState<'grid' | 'chart'>('chart');
 
     useEffect(() => {
         localStorage.setItem('orders_save_date_range', String(saveDateRange));
@@ -262,6 +263,24 @@ export const Orders = () => {
         });
         return acc;
     }, {} as Record<string, Record<string, number>>);
+
+    const sortedDates = Object.keys(productSummaryByDate).sort((a, b) => {
+        const [ad, am, ay] = a.split('/');
+        const [bd, bm, by] = b.split('/');
+        const dateA = new Date(parseInt(ay), parseInt(am) - 1, parseInt(ad));
+        const dateB = new Date(parseInt(by), parseInt(bm) - 1, parseInt(bd));
+        return dateA.getTime() - dateB.getTime();
+    });
+
+    const total5Luong = Object.values(productSummaryByDate).reduce((sum, counts) => sum + (counts['5 lượng'] || 0), 0);
+    const total1Kg = Object.values(productSummaryByDate).reduce((sum, counts) => sum + (counts['1 kg'] || 0), 0);
+    const maxCount = Math.max(
+        ...Object.values(productSummaryByDate).flatMap(counts => [
+            counts['5 lượng'] || 0,
+            counts['1 kg'] || 0
+        ]),
+        5
+    );
 
     return (
         <div className={styles.container}>
@@ -447,37 +466,163 @@ export const Orders = () => {
             )}
 
             <Card className="mb-6">
-                <CardHeader className="pb-2">
+                <CardHeader className="pb-2 flex flex-row items-center justify-between space-y-0">
                     <CardTitle className="text-sm font-medium">Sản phẩm bán được theo ngày</CardTitle>
+                    <div className="flex bg-gray-100 p-1 rounded-lg border border-gray-200 text-xs font-semibold gap-1 select-none">
+                        <button
+                            onClick={() => setChartViewMode('grid')}
+                            className={`px-3 py-1 rounded-md transition-all cursor-pointer ${
+                                chartViewMode === 'grid'
+                                    ? 'bg-white text-gray-900 shadow-sm'
+                                    : 'text-gray-500 hover:text-gray-800'
+                            }`}
+                        >
+                            Dạng lưới
+                        </button>
+                        <button
+                            onClick={() => setChartViewMode('chart')}
+                            className={`px-3 py-1 rounded-md transition-all cursor-pointer ${
+                                chartViewMode === 'chart'
+                                    ? 'bg-white text-gray-900 shadow-sm'
+                                    : 'text-gray-500 hover:text-gray-800'
+                            }`}
+                        >
+                            Biểu đồ cột
+                        </button>
+                    </div>
                 </CardHeader>
                 <CardContent>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                        {Object.entries(productSummaryByDate).length === 0 ? (
-                            <div className="text-sm text-gray-500">Không có dữ liệu trong khoảng thời gian này.</div>
-                        ) : Object.entries(productSummaryByDate).map(([date, counts], index) => {
-                            const colors = [
-                                'bg-pink-50 border-pink-200 text-pink-900',
-                                'bg-purple-50 border-purple-200 text-purple-900',
-                                'bg-blue-50 border-blue-200 text-blue-900',
-                                'bg-teal-50 border-teal-200 text-teal-900',
-                                'bg-orange-50 border-orange-200 text-orange-900'
-                            ];
-                            const colorClass = colors[index % colors.length];
-                            return (
-                                <div key={date} className={`border rounded p-3 ${colorClass}`}>
-                                    <div className="font-bold border-b border-black/10 pb-1 mb-2">{date}</div>
-                                    <div className="space-y-1 text-sm">
-                                        {Object.entries(counts).map(([type, count]) => (
-                                            <div key={type} className="flex justify-between">
-                                                <span className="opacity-80 font-medium">{type}</span>
-                                                <span className="font-bold">{count}</span>
-                                            </div>
-                                        ))}
+                    {chartViewMode === 'chart' ? (
+                        <div className="space-y-4 pt-2">
+                            {/* Legend */}
+                            <div className="flex flex-wrap items-center gap-6 text-sm pb-2 border-b border-gray-100">
+                                <div className="flex items-center gap-2">
+                                    <span className="w-4 h-4 rounded bg-gradient-to-tr from-amber-500 to-yellow-400 shadow-sm"></span>
+                                    <span className="font-semibold text-gray-700">5 lượng</span>
+                                    <span className="text-xs bg-amber-50 text-amber-700 border border-amber-200 px-2 py-0.5 rounded-full font-bold">
+                                        Tổng: {total5Luong}
+                                    </span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <span className="w-4 h-4 rounded bg-gradient-to-tr from-blue-600 to-cyan-500 shadow-sm"></span>
+                                    <span className="font-semibold text-gray-700">1 kg</span>
+                                    <span className="text-xs bg-blue-50 text-blue-700 border border-blue-200 px-2 py-0.5 rounded-full font-bold">
+                                        Tổng: {total1Kg}
+                                    </span>
+                                </div>
+                            </div>
+
+                            {Object.keys(productSummaryByDate).length === 0 ? (
+                                <div className="text-sm text-gray-500 py-8 text-center">Không có dữ liệu trong khoảng thời gian này.</div>
+                            ) : (
+                                <div className="overflow-x-auto pb-2">
+                                    <div className="min-w-[600px] h-72 relative mt-6 flex flex-col justify-end select-none">
+                                        
+                                        {/* Y-Axis Grid Lines */}
+                                        <div className="absolute inset-0 flex flex-col justify-between pointer-events-none pb-8 text-[10px] text-gray-400 font-medium">
+                                            {[4, 3, 2, 1, 0].map((step) => {
+                                                const value = Math.round((maxCount / 4) * step);
+                                                return (
+                                                    <div key={step} className="w-full flex items-center gap-2">
+                                                        <span className="w-8 text-right tabular-nums">{value}</span>
+                                                        <div className="flex-1 border-t border-dashed border-gray-200"></div>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+
+                                        {/* Columns Area */}
+                                        <div className="relative flex justify-around items-end pl-10 pr-2 h-full pb-8 z-10">
+                                            {sortedDates.map((date) => {
+                                                const counts = productSummaryByDate[date] || {};
+                                                const count5 = counts['5 lượng'] || 0;
+                                                const count1 = counts['1 kg'] || 0;
+
+                                                const pct5 = maxCount > 0 ? (count5 / maxCount) * 100 : 0;
+                                                const pct1 = maxCount > 0 ? (count1 / maxCount) * 100 : 0;
+
+                                                return (
+                                                    <div key={date} className="flex flex-col items-center group/col">
+                                                        <div className="flex items-end gap-2.5 h-48 w-24 justify-center">
+                                                            {/* Bar for 5 lượng */}
+                                                            <div className="relative flex flex-col items-center justify-end w-6 h-full group/bar">
+                                                                {count5 > 0 && (
+                                                                    <div className="absolute -top-6 text-[10px] font-bold text-amber-700 bg-amber-50 px-1 py-0.5 rounded border border-amber-200 opacity-0 group-hover/bar:opacity-100 transition-opacity pointer-events-none shadow-sm z-20 whitespace-nowrap">
+                                                                        5 lượng: {count5}
+                                                                    </div>
+                                                                )}
+                                                                {count5 > 0 && (
+                                                                    <span className="absolute bottom-2 text-[10px] font-extrabold text-white z-10 pointer-events-none drop-shadow-md">
+                                                                        {count5}
+                                                                    </span>
+                                                                )}
+                                                                <div
+                                                                    style={{ height: `${pct5}%` }}
+                                                                    className="w-full rounded-t-md bg-gradient-to-t from-amber-500 to-yellow-400 hover:from-amber-600 hover:to-yellow-500 transition-all duration-300 shadow-sm relative cursor-pointer"
+                                                                />
+                                                            </div>
+
+                                                            {/* Bar for 1 kg */}
+                                                            <div className="relative flex flex-col items-center justify-end w-6 h-full group/bar">
+                                                                {count1 > 0 && (
+                                                                    <div className="absolute -top-6 text-[10px] font-bold text-blue-700 bg-blue-50 px-1 py-0.5 rounded border border-blue-200 opacity-0 group-hover/bar:opacity-100 transition-opacity pointer-events-none shadow-sm z-20 whitespace-nowrap">
+                                                                        1 kg: {count1}
+                                                                    </div>
+                                                                )}
+                                                                {count1 > 0 && (
+                                                                    <span className="absolute bottom-2 text-[10px] font-extrabold text-white z-10 pointer-events-none drop-shadow-md">
+                                                                        {count1}
+                                                                    </span>
+                                                                )}
+                                                                <div
+                                                                    style={{ height: `${pct1}%` }}
+                                                                    className="w-full rounded-t-md bg-gradient-to-t from-blue-600 to-cyan-500 hover:from-blue-700 hover:to-cyan-600 transition-all duration-300 shadow-sm relative cursor-pointer"
+                                                                />
+                                                            </div>
+                                                        </div>
+
+                                                        {/* Date Label */}
+                                                        <div className="text-[11px] font-semibold text-gray-500 mt-2 text-center group-hover/col:text-gray-800 transition-colors">
+                                                            {date}
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+
                                     </div>
                                 </div>
-                            );
-                        })}
-                    </div>
+                            )}
+                        </div>
+                    ) : (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                            {Object.entries(productSummaryByDate).length === 0 ? (
+                                <div className="text-sm text-gray-500">Không có dữ liệu trong khoảng thời gian này.</div>
+                            ) : Object.entries(productSummaryByDate).map(([date, counts], index) => {
+                                const colors = [
+                                    'bg-pink-50 border-pink-200 text-pink-900',
+                                    'bg-purple-50 border-purple-200 text-purple-900',
+                                    'bg-blue-50 border-blue-200 text-blue-900',
+                                    'bg-teal-50 border-teal-200 text-teal-900',
+                                    'bg-orange-50 border-orange-200 text-orange-900'
+                                ];
+                                const colorClass = colors[index % colors.length];
+                                return (
+                                    <div key={date} className={`border rounded p-3 ${colorClass}`}>
+                                        <div className="font-bold border-b border-black/10 pb-1 mb-2">{date}</div>
+                                        <div className="space-y-1 text-sm">
+                                            {Object.entries(counts).map(([type, count]) => (
+                                                <div key={type} className="flex justify-between">
+                                                    <span className="opacity-80 font-medium">{type}</span>
+                                                    <span className="font-bold">{count}</span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
                 </CardContent>
             </Card>
 
