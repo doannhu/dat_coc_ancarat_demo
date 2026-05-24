@@ -117,9 +117,9 @@ export function Buyback() {
 
         setSelectedTransaction(tx);
         // Pre-populate buyback items from transaction items
-        // Only include items that have status 'Đã bán' or 'Đã đặt hàng'
+        // Only include items that have status 'Đã bán', 'Đã đặt hàng' or 'Đã nhận hàng NSX'
         const items: BuybackItem[] = tx.items
-            .filter(item => item.product.status === 'Đã bán' || item.product.status === 'Đã đặt hàng')
+            .filter(item => item.product.status === 'Đã bán' || item.product.status === 'Đã đặt hàng' || item.product.status === 'Đã nhận hàng NSX')
             .map(item => ({
                 product_id: item.product_id,
                 product_code: item.product.product_code,

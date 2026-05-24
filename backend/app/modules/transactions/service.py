@@ -287,10 +287,15 @@ class TransactionService:
             product = await self.product_repository.get(id=item.product_id)
             if not product:
                 raise ValueError(f"Product ID {item.product_id} not found")
-            
-            # Update product: status back to available, update price
+            # Determine new status: if it was already received from manufacturer, keep it as RECEIVED_FROM_MFR
+            # so it appears in the received-unassigned list on the stores page. Otherwise, make it AVAILABLE.
+            new_status = ProductStatus.AVAILABLE
+            if product.status == ProductStatus.RECEIVED_FROM_MFR:
+                new_status = ProductStatus.RECEIVED_FROM_MFR
+
+            # Update product: status back to available / RECEIVED_FROM_MFR, update price
             update_schema = product_schemas.ProductUpdate(
-                status=ProductStatus.AVAILABLE,
+                status=new_status,
                 last_price=item.buyback_price
             )
             await self.product_repository.update(db_obj=product, obj_in=update_schema)
