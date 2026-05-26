@@ -212,7 +212,33 @@ export function ContractGenerator({ order }: ContractGeneratorProps) {
                 html2canvas: { scale: 2, useCORS: true },
                 jsPDF: { unit: 'mm' as const, format: 'a4' as const, orientation: 'portrait' as const }
             };
-            await html2pdf().set(opt).from(contractRef.current).save();
+            await html2pdf()
+                .set(opt)
+                .from(contractRef.current)
+                .toPdf()
+                .get('pdf')
+                .then((pdf: any) => {
+                    let totalPages = pdf.internal.getNumberOfPages();
+                    
+                    // If the contract only has 1 product type, it should fit on 1 page.
+                    // If a second empty trailing page is accidentally generated, we remove it.
+                    if (grouped.length < 2 && totalPages === 2) {
+                        pdf.deletePage(2);
+                        totalPages = 1;
+                    }
+
+                    for (let i = 1; i <= totalPages; i++) {
+                        pdf.setPage(i);
+                        pdf.setFont('times', 'normal');
+                        pdf.setFontSize(10);
+                        pdf.setTextColor(100, 100, 100);
+                        
+                        const x = pdf.internal.pageSize.getWidth() - 15;
+                        const y = pdf.internal.pageSize.getHeight() - 12;
+                        pdf.text(`Trang ${i}/${totalPages}`, x, y, { align: 'right' });
+                    }
+                })
+                .save();
         } catch (e) {
             console.error('Failed to generate PDF', e);
             alert('Lỗi khi tạo PDF');
@@ -452,22 +478,55 @@ export function ContractGenerator({ order }: ContractGeneratorProps) {
                                             <li>Bên A chỉ trả hàng cho chính chủ, không giải quyết các trường hợp lấy hộ.</li>
                                         </ol>
 
+                                        {/* Điều 4 Spacer and Page Break */}
+                                        {grouped.length >= 2 && (
+                                            <div style={{ pageBreakBefore: 'always', height: '40px' }} />
+                                        )}
+
                                         {/* Điều 4 */}
-                                        <span style={{ fontWeight: 'bold', textDecoration: 'underline', marginTop: '15px', display: 'block' }}>
+                                        <span style={{
+                                            fontWeight: 'bold',
+                                            textDecoration: 'underline',
+                                            marginTop: grouped.length >= 2 ? '0px' : '15px',
+                                            display: 'block'
+                                        }}>
                                             Điều 4: Hiệu lực thỏa thuận:
                                         </span>
                                         <p>Hợp đồng có giá trị kể từ ngày ký và tự động hết hiệu lực khi hai bên hoàn tất nghĩa vụ giao nhận.</p>
 
-                                        {/* Signatures */}
                                         <div style={{ marginTop: '40px', display: 'flex', justifyContent: 'space-between' }}>
                                             <div style={{ textAlign: 'center', width: '45%' }}>
                                                 <strong>BÊN B</strong><br />
-                                                <strong></strong><br />
+                                                {grouped.length >= 2 ? (
+                                                    <>
+                                                        <br />
+                                                        <br />
+                                                        <br />
+                                                        <br />
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <br />
+                                                        <br />
+                                                    </>
+                                                )}
                                                 <strong>{customer?.name}</strong><br />
                                             </div>
                                             <div style={{ textAlign: 'center', width: '45%' }}>
                                                 <strong>BÊN A</strong><br />
-                                                <strong></strong><br />
+                                                {grouped.length >= 2 ? (
+                                                    <>
+                                                        <br />
+                                                        <br />
+                                                        <br />
+                                                        <br />
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <br />
+                                                        <br />
+                                                    </>
+                                                )}
                                                 <strong>Doanh nghiệp Tư nhân</strong><br />
                                                 <strong>Vàng Bạc Hoa Tùng</strong><br />
                                                 {/* <div style={{
